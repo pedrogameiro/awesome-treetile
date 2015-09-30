@@ -1,31 +1,47 @@
--- Treesome: Tree-based tiling layour for Awesome 3
--- Licenced under the GNU General Public License v2
---  * (c) 2013, RobSis@github.com
----------------------------------------------------
+--[[
+    Treesome: Binary Tree-based tiling layout for Awesome 3
 
-local ipairs = ipairs
-local pairs = pairs
-local type = type
-local tostring = tostring
-local table = table
-local math = math
-local awful = require("awful")
+    Github: https://github.com/RobSis/treesome
+    License: GNU General Public License v2.0
+--]]
+
+local awful     = require("awful")
+local beautiful = require("beautiful")
+local Bintree   = require("treesome/bintree")
+local os        = os
+local math      = math
+local ipairs    = ipairs
+local pairs     = pairs
+local table     = table
+local tonumber  = tonumber
+local tostring  = tostring
+local type      = type
 local capi =
 {
     client = client,
     mouse = mouse
 }
 
-local Bintree = require("treesome/bintree")
 module("treesome")
+name = "treesome"
 
--- Globals
-local config = {
+-- Layout icon
+beautiful.layout_treesome = os.getenv("HOME") .. "/.config/awesome/treesome/layout_icon.png"
+
+-- Configuration
+local configuration = {
     focusFirst = true
 }
-trees = {}
-name = "treesome"
-forceSplit = nil
+
+-- Globals
+local trees = {}
+local forceSplit = nil
+
+
+-- get an unique identifier of a window
+function hash(client)
+    return client.window
+end
 
 function table_find(tbl, item)
     for key, value in pairs(tbl) do
@@ -156,7 +172,7 @@ function arrange(p)
         if trees[tag].clients then
             local diff = table_diff(p.clients, trees[tag].clients)
             if diff and #diff == 2 then
-                trees[tag].t:swapLeaves(diff[1].pid, diff[2].pid)
+                trees[tag].t:swapLeaves(hash(diff[1]), hash(diff[2]))
             end
         end
     end
@@ -167,7 +183,7 @@ function arrange(p)
         if n > 0 then
             local tokens = {}
             for i, c in ipairs(p.clients) do
-                tokens[i] = c.pid
+                tokens[i] = hash(c)
             end
 
             trees[tag].t:filterClients(trees[tag].t, tokens)
@@ -181,7 +197,7 @@ function arrange(p)
     local nextSplit = 0
     if changed > 0 then
         for i, c in ipairs(p.clients) do
-            if not trees[tag].t or not trees[tag].t:find(c.pid) then
+            if not trees[tag].t or not trees[tag].t:find(hash(c)) then
                 if focus == nil then
                     focus = trees[tag].lastFocus
                 end
@@ -189,22 +205,22 @@ function arrange(p)
                 local focusNode = nil
                 local focusGeometry = nil
                 local focusId = nil
-                if trees[tag].t and focus and c.pid ~= focus.pid and not layoutSwitch then
+                if trees[tag].t and focus and hash(c) ~= hash(focus) and not layoutSwitch then
                     -- split focused window
-                    focusNode = trees[tag].t:find(focus.pid)
+                    focusNode = trees[tag].t:find(hash(focus))
                     focusGeometry = focus:geometry()
-                    focusId = focus.pid
+                    focusId = hash(focus)
                 else
                     -- the layout was switched with more clients to order at once
                     if prevClient then
-                        focusNode = trees[tag].t:find(prevClient.pid)
+                        focusNode = trees[tag].t:find(hash(prevClient))
                         nextSplit = (nextSplit + 1) % 2
-                        focusId = prevClient.pid
+                        focusId = hash(prevClient)
                     else
                         if not trees[tag].t then
                             -- create as root
-                            trees[tag].t = Bintree.new(c.pid)
-                            focusId = c.pid
+                            trees[tag].t = Bintree.new(hash(c))
+                            focusId = hash(c)
                             focusGeometry = {
                                 width = 0,
                                 height = 0
@@ -229,11 +245,11 @@ function arrange(p)
                         end
                     end
 
-                    if config.focusFirst then
+                    if configuration.focusFirst then
                         focusNode:addLeft(Bintree.new(focusId))
-                        focusNode:addRight(Bintree.new(c.pid))
+                        focusNode:addRight(Bintree.new(hash(c)))
                     else
-                        focusNode:addLeft(Bintree.new(c.pid))
+                        focusNode:addLeft(Bintree.new(hash(c)))
                         focusNode:addRight(Bintree.new(focusId))
                     end
                 end
@@ -243,20 +259,26 @@ function arrange(p)
         forceSplit = nil
     end
 
+    -- Useless gap.
+    local useless_gap = tonumber(beautiful.useless_gap_width)
+    if useless_gap == nil then
+        useless_gap = 0
+    end
+
     -- draw it
     if n >= 1 then
         for i, c in ipairs(p.clients) do
             local geometry = {
-                width = area.width,
-                height = area.height,
-                x = area.x,
-                y = area.y
+                width = area.width - ( useless_gap * 2.0 ),
+                height = area.height - ( useless_gap * 2.0 ),
+                x = area.x + useless_gap,
+                y = area.y + useless_gap
             }
 
-            local clientNode = trees[tag].t:find(c.pid)
+            local clientNode = trees[tag].t:find(hash(c))
             local path = {}
 
-            trees[tag].t:trace(c.pid, path)
+            trees[tag].t:trace(hash(c), path)
             for i, v in ipairs(path) do
                 if i < #path then
                     split = v.split
@@ -264,22 +286,22 @@ function arrange(p)
                     direction = path[i + 1].direction
 
                     if split == "horizontal" then
-                        geometry.width = geometry.width / 2.0
+                        geometry.width = ( geometry.width - useless_gap ) / 2.0
 
                         if direction == "right" then
-                            geometry.x = geometry.x + geometry.width
+                            geometry.x = geometry.x + geometry.width + useless_gap
                         end
                     elseif split == "vertical" then
-                        geometry.height = geometry.height / 2.0
+                        geometry.height = ( geometry.height - useless_gap ) / 2.0
 
                         if direction == "right" then
-                            geometry.y = geometry.y + geometry.height
+                            geometry.y = geometry.y + geometry.height + useless_gap
                         end
                     end
                 end
             end
 
-            local sibling = trees[tag].t:getSibling(c.pid)
+            local sibling = trees[tag].t:getSibling(hash(c))
 
             c:geometry(geometry)
         end
