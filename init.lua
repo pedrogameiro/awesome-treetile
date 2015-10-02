@@ -7,6 +7,7 @@
 
 local awful     = require("awful")
 local beautiful = require("beautiful")
+--local client = require("awful.client")
 local Bintree   = require("treesome/bintree")
 local os        = os
 local math      = math
@@ -22,35 +23,34 @@ local capi =
     mouse = mouse
 }
 
-module("treesome")
-name = "treesome"
+local treesome = {
+    focusFirst = true,
+    name       = "treesome",
+    forceSplit = nil,
+    trees = {}
+}
+    
 
 -- Layout icon
 beautiful.layout_treesome = os.getenv("HOME") .. "/.config/awesome/treesome/layout_icon.png"
 
--- Configuration
-local configuration = {
-    focusFirst = true
-}
-
 -- Globals
-local trees = {}
-local forceSplit = nil
+--local trees = {}
 
 
 -- get an unique identifier of a window
-function hash(client)
+local function hash(client)
     return client.window
 end
 
-function table_find(tbl, item)
+local function table_find(tbl, item)
     for key, value in pairs(tbl) do
         if value == item then return key end
     end
     return false
 end
 
-function table_diff(table1, table2)
+local function table_diff(table1, table2)
     local diffList = {}
     for i,v in ipairs(table1) do
         if table2[i] ~= v then
@@ -109,33 +109,35 @@ function Bintree:filterClients(node, clients)
     end
 end
 
-function setslave(client)
-    if not trees[tostring(awful.tag.selected(capi.mouse.screen))] then
+local function setslave(client)
+    if not treesome.trees[tostring(awful.tag.selected(capi.mouse.screen))] then
         awful.client.setslave(client)
     end
 end
 
-function setmaster(client)
-    if not trees[tostring(awful.tag.selected(capi.mouse.screen))] then
+local function setmaster(client)
+    if not treesome.trees[tostring(awful.tag.selected(capi.mouse.screen))] then
         awful.client.setmaster(client)
     end
 end
 
-function horizontal()
-    forceSplit = "horizontal"
+function treesome.horizontal()
+    treesome.forceSplit = "horizontal"
+    debuginfo('Next split is'..treesome.forceSplit)
 end
 
-function vertical()
-    forceSplit = "vertical"
+function treesome.vertical()
+    treesome.forceSplit = "vertical"
+    debuginfo('Next split is'..treesome.forceSplit)
 end
 
-function arrange(p)
+local function do_treesome(p)
     local area = p.workarea
     local n = #p.clients
 
     local tag = tostring(awful.tag.selected(capi.mouse.screen))
-    if not trees[tag] then
-        trees[tag] = {
+    if not treesome.trees[tag] then
+        treesome.trees[tag] = {
             t = nil,
             lastFocus = nil,
             clients = nil,
@@ -143,13 +145,14 @@ function arrange(p)
         }
     end
 
-    if trees[tag] ~= nil then
+    if treesome.trees[tag] ~= nil then
         focus = capi.client.focus
+
         if focus ~= nil then
             if awful.client.floating.get(focus) then
                 focus = nil
             else
-                trees[tag].lastFocus = focus
+                treesome.trees[tag].lastFocus = focus
             end
         end
     end
@@ -158,25 +161,25 @@ function arrange(p)
     local changed = 0
     local layoutSwitch = false
 
-    if trees[tag].n ~= n then
-        if math.abs(n - trees[tag].n) > 1 then
+    if treesome.trees[tag].n ~= n then
+        if math.abs(n - treesome.trees[tag].n) > 1 then
             layoutSwitch = true
         end
-        if not trees[tag].n or n > trees[tag].n then
+        if not treesome.trees[tag].n or n > treesome.trees[tag].n then
             changed = 1
         else
             changed = -1
         end
-        trees[tag].n = n
+        treesome.trees[tag].n = n
     else
-        if trees[tag].clients then
-            local diff = table_diff(p.clients, trees[tag].clients)
+        if treesome.trees[tag].clients then
+            local diff = table_diff(p.clients, treesome.trees[tag].clients)
             if diff and #diff == 2 then
-                trees[tag].t:swapLeaves(hash(diff[1]), hash(diff[2]))
+                treesome.trees[tag].t:swapLeaves(hash(diff[1]), hash(diff[2]))
             end
         end
     end
-    trees[tag].clients = p.clients
+    treesome.trees[tag].clients = p.clients
 
     -- some client removed. remove (from) tree
     if changed < 0 then
@@ -186,9 +189,9 @@ function arrange(p)
                 tokens[i] = hash(c)
             end
 
-            trees[tag].t:filterClients(trees[tag].t, tokens)
+            treesome.trees[tag].t:filterClients(treesome.trees[tag].t, tokens)
         else
-            trees[tag] = nil
+            treesome.trees[tag] = nil
         end
     end
 
@@ -197,29 +200,31 @@ function arrange(p)
     local nextSplit = 0
     if changed > 0 then
         for i, c in ipairs(p.clients) do
-            if not trees[tag].t or not trees[tag].t:find(hash(c)) then
+            if not treesome.trees[tag].t or not treesome.trees[tag].t:find(hash(c)) then
                 if focus == nil then
-                    focus = trees[tag].lastFocus
+                    focus = treesome.trees[tag].lastFocus
                 end
 
                 local focusNode = nil
                 local focusGeometry = nil
                 local focusId = nil
-                if trees[tag].t and focus and hash(c) ~= hash(focus) and not layoutSwitch then
+                if treesome.trees[tag].t and focus and hash(c) ~= hash(focus) and not layoutSwitch then
                     -- split focused window
-                    focusNode = trees[tag].t:find(hash(focus))
+                    focusNode = treesome.trees[tag].t:find(hash(focus))
                     focusGeometry = focus:geometry()
                     focusId = hash(focus)
                 else
                     -- the layout was switched with more clients to order at once
                     if prevClient then
-                        focusNode = trees[tag].t:find(hash(prevClient))
+                        focusNode = treesome.trees[tag].t:find(hash(prevClient))
                         nextSplit = (nextSplit + 1) % 2
                         focusId = hash(prevClient)
+                        focusGeometry = prevClient:geometry()
+
                     else
-                        if not trees[tag].t then
+                        if not treesome.trees[tag].t then
                             -- create as root
-                            trees[tag].t = Bintree.new(hash(c))
+                            treesome.trees[tag].t = Bintree.new(hash(c))
                             focusId = hash(c)
                             focusGeometry = {
                                 width = 0,
@@ -234,8 +239,9 @@ function arrange(p)
                         local splits = {"horizontal", "vertical"}
                         focusNode.data = splits[nextSplit + 1]
                     else
-                        if (forceSplit ~= nil) then
-                            focusNode.data = forceSplit
+                        if (treesome.forceSplit ~= nil) then
+
+                            focusNode.data = treesome.forceSplit
                         else
                             if (focusGeometry.width <= focusGeometry.height) then
                                 focusNode.data = "vertical"
@@ -245,7 +251,7 @@ function arrange(p)
                         end
                     end
 
-                    if configuration.focusFirst then
+                    if treesome.focusFirst then
                         focusNode:addLeft(Bintree.new(focusId))
                         focusNode:addRight(Bintree.new(hash(c)))
                     else
@@ -256,7 +262,7 @@ function arrange(p)
             end
             prevClient = c
         end
-        forceSplit = nil
+        treesome.forceSplit = nil
     end
 
     -- Useless gap.
@@ -275,10 +281,10 @@ function arrange(p)
                 y = area.y + useless_gap
             }
 
-            local clientNode = trees[tag].t:find(hash(c))
+            local clientNode = treesome.trees[tag].t:find(hash(c))
             local path = {}
 
-            trees[tag].t:trace(hash(c), path)
+            treesome.trees[tag].t:trace(hash(c), path)
             for i, v in ipairs(path) do
                 if i < #path then
                     split = v.split
@@ -301,9 +307,50 @@ function arrange(p)
                 end
             end
 
-            local sibling = trees[tag].t:getSibling(hash(c))
+            local sibling = treesome.trees[tag].t:getSibling(hash(c))
 
-            c:geometry(geometry)
+            --c:geometry(geometry)
+            p.geometries[c] = geometry
         end
     end
 end
+
+--local function fmax(p, fs)
+    ---- Fullscreen?
+    --local area
+    --if fs then
+        --area = p.geometry
+    --else
+        --area = p.workarea
+    --end
+
+    --for k, c in pairs(p.clients) do
+        --local g = {
+            --x = area.x,
+            --y = area.y,
+            --width = area.width,
+            --height = area.height
+        --}
+        --p.geometries[c] = g
+    --end
+--end
+
+function treesome.arrange(p)
+
+    return do_treesome(p)
+end
+
+treesome.name = "treesome"
+
+
+--local function debuginfo( message )
+    --if type(message) == "table" then
+        --for k,v in pairs(message) do 
+            --naughty.notify({ text = "key: "..k.." value: "..tostring(message), timeout = 10 })
+        --end
+    --else 
+        --nid = naughty.notify({ text = message, timeout = 10 })
+    --end
+--end
+
+return treesome
