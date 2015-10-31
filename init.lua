@@ -51,7 +51,8 @@ beautiful.layout_treesome = os.getenv("HOME") .. "/.config/awesome/treesome/layo
 -- get an unique identifier of a window
 local function hash(client)
     if client then
-        return client.window
+        --return client.window
+        return client
     else
         return nil
     end
@@ -146,9 +147,9 @@ function treesome.vertical()
 end
 
 local function do_treesome(p)
+    local old_clients = nil
     local area = p.workarea
     local n = #p.clients
-    debuginfo("clients:"..tostring(n))
 
     local tag = tostring(awful.tag.selected(capi.mouse.screen))
     if not trees[tag] then
@@ -156,6 +157,7 @@ local function do_treesome(p)
             t = nil,
             lastFocus = nil,
             clients = nil,
+            geo = nil,
             n = 0
         }
     end
@@ -175,6 +177,7 @@ local function do_treesome(p)
     -- rearange only on change
     local changed = 0
     local layoutSwitch = false
+    local update = false
 
     if trees[tag].n ~= n then
         if math.abs(n - trees[tag].n) > 1 then
@@ -191,9 +194,12 @@ local function do_treesome(p)
             local diff = table_diff(p.clients, trees[tag].clients)
             if diff and #diff == 2 then
                 trees[tag].t:swapLeaves(hash(diff[1]), hash(diff[2]))
+                trees[tag].geo[diff[1]], trees[tag].geo[diff[2]] = trees[tag].geo[diff[2]], trees[tag].geo[diff[1]] 
+                update=true
             end
         end
     end
+
     trees[tag].clients = p.clients
 
     -- some client removed. remove (from) tree
@@ -204,11 +210,42 @@ local function do_treesome(p)
                 tokens[i] = hash(c)
             end
 
+            for c, geo in pairs(trees[tag].geo) do
+                if awful.util.table.hasitem(p.clients, c) == nil then
+                    local sibling = trees[tag].t:getSibling(hash(c))
+                    if sibling ~= nil then 
+                        for _, sib_client in pairs(sibling) do 
+                            sib_geo = trees[tag].geo[sib_client]
+
+                            local new_geo = {}
+                            if math.abs(geo.x - sib_geo.x) < 1  then 
+                                new_geo.x = sib_geo.x
+                                new_geo.y = math.min(geo.y, sib_geo.y)
+                                new_geo.height = sib_geo.height + geo.height
+                                new_geo.width = sib_geo.width
+                            end
+
+                            if math.abs(geo.y - sib_geo.y) < 1  then 
+                                new_geo.y = sib_geo.y
+                                new_geo.x = math.min(geo.x, sib_geo.x)
+                                new_geo.width = sib_geo.width + geo.width
+                                new_geo.height = sib_geo.height
+                            end
+
+                            trees[tag].geo[sib_client] = new_geo
+                        end
+                        local pos = awful.util.table.hasitem(trees[tag].geo, c)
+                        table.remove(trees[tag].geo, pos)
+                    end
+                end
+            end
+            --local sibling = trees[tag].t:getSibling(hash(c))
             trees[tag].t:filterClients(trees[tag].t, tokens)
         else
             trees[tag] = nil
         end
     end
+
 
     -- some client added. put it in the tree as a sibling of focus
     local prevClient = nil
@@ -223,21 +260,22 @@ local function do_treesome(p)
                 local focusNode = nil
                 local focusGeometry = nil
                 local focusId = nil
+                local focusCl = nil
 
                 if trees[tag].t and focus and hash(c) ~= hash(focus)  and not layoutSwitch then
                     -- split focused window
                     --debuginfo('is switch')
                     focusNode = trees[tag].t:find(hash(focus))
-                    pc = awful.client.focus.history.get(mouse.screen, 0)
-                    pc1 = awful.client.focus.history.get(mouse.screen, 1)
                     focusGeometry = focus:geometry()
                     focusId = hash(focus)
+                    focusCl = focus
                 else
                     -- the layout was switched with more clients to order at once
                     if prevClient then
                         focusNode = trees[tag].t:find(hash(prevClient))
                         nextSplit = (nextSplit + 1) % 2
                         focusId = hash(prevClient)
+                        focusCl = prevClient
                         --focusGeometry = prevClient:geometry()
 
                     else
@@ -245,10 +283,13 @@ local function do_treesome(p)
                             -- create as root
                             trees[tag].t = Bintree.new(hash(c))
                             focusId = hash(c)
+                            focusCl = c
                             focusGeometry = {
                                 width = 0,
                                 height = 0
                             }
+                            trees[tag].geo = {}
+                            trees[tag].geo[c] = area
                         end
                     end
                 end
@@ -277,6 +318,71 @@ local function do_treesome(p)
                         focusNode:addLeft(Bintree.new(hash(c)))
                         focusNode:addRight(Bintree.new(focusId))
                     end
+
+                    -- Useless gap.
+                    local useless_gap = tonumber(beautiful.useless_gap_width)
+                    if useless_gap == nil then
+                        useless_gap = 0
+                    end
+
+                    local avail_geo 
+
+                    if focusGeometry then 
+                        if focusGeometry.height == 0 and focusGeometry.width == 0 then
+                            avail_geo = area
+                        else
+                            avail_geo = focusGeometry
+                        end
+                    else
+                        avail_geo = area
+                    end
+
+                    local new_c = {}
+                    local old_focus_c = {}
+
+                    if focusNode.data == "horizontal" then
+                        new_c.width = math.floor((avail_geo.width - useless_gap) / 2.0 )
+                        new_c.height =avail_geo.height
+                        old_focus_c.width = math.floor((avail_geo.width - useless_gap) / 2.0 )
+                        old_focus_c.height =avail_geo.height
+                        old_focus_c.y = avail_geo.y
+                        new_c.y = avail_geo.y
+
+
+                        if direction == treesome.direction then
+                            new_c.x = avail_geo.x + new_c.width
+                            old_focus_c.x = avail_geo.x
+                        else
+                            new_c.x = avail_geo.x
+                            old_focus_c.x = avail_geo.x + new_c.width
+                        end
+
+
+                    elseif focusNode.data == "vertical" then
+                        new_c.height = math.floor((avail_geo.height - useless_gap) / 2.0 )
+                        new_c.width = avail_geo.width
+                        old_focus_c.height = math.floor((avail_geo.height - useless_gap) / 2.0 )
+                        old_focus_c.width = avail_geo.width
+                        old_focus_c.x = avail_geo.x
+                        new_c.x = avail_geo.x
+
+                        if direction == treesome.direction then
+                            new_c.y = avail_geo.y + new_c.height
+                            old_focus_c.y = avail_geo.y
+                        else
+                            new_c.y = avail_geo.y 
+                            old_focus_c.y =avail_geo.x + new_c.height
+                        end
+
+                    end
+
+                    -- put geometry of clients into tables
+                    if focusId then
+                        trees[tag].geo[focusCl] = old_focus_c
+                        trees[tag].geo[c] = new_c
+                    end
+
+
                 end
             end
             prevClient = c
@@ -284,53 +390,22 @@ local function do_treesome(p)
         forceSplit = nil
     end
 
-    -- Useless gap.
-    local useless_gap = tonumber(beautiful.useless_gap_width)
-    if useless_gap == nil then
-        useless_gap = 0
-    end
 
     -- draw it
-    if changed ~= 0 or layoutSwitch then
+    if changed ~= 0 or layoutSwitch or update then
         if n >= 1 then
             for i, c in ipairs(p.clients) do
-                local geometry = {
-                    width = area.width - ( useless_gap * 2.0 ),
-                    height = area.height - ( useless_gap * 2.0 ),
-                    x = area.x + useless_gap,
-                    y = area.y + useless_gap
-                }
 
                 local clientNode = trees[tag].t:find(hash(c))
                 local path = {}
+                local geo = nil
 
-                trees[tag].t:trace(hash(c), path)
-                for i, v in ipairs(path) do
-                    if i < #path then
-                        split = v.split
-                        -- is the client left of right from this node
-                        direction = path[i + 1].direction
+                geo = trees[tag].geo[c]
+                --debuginfo(tostring(trees[tag].geo.x).." "..
+                --p.geometries[c] = geo
+                --local sibling = trees[tag].t:getSibling(hash(c))
 
-                        if split == "horizontal" then
-                            geometry.width = math.floor(( geometry.width - useless_gap) / 2.0 )
-
-                            if direction == treesome.direction then
-                                geometry.x = math.floor(geometry.x + geometry.width + useless_gap)
-                            end
-                        elseif split == "vertical" then
-                            geometry.height = math.floor(( geometry.height - useless_gap) / 2.0 )
-
-                            if direction == treesome.direction then
-                                geometry.y = math.floor(geometry.y + geometry.height + useless_gap )
-                            end
-                        end
-                    end
-                end
-
-                local sibling = trees[tag].t:getSibling(hash(c))
-
-                --c:geometry(geometry)
-                p.geometries[c] = geometry
+                c:geometry(geo)
             end
         end
     end
