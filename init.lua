@@ -47,6 +47,130 @@ beautiful.layout_treesome = os.getenv("HOME") .. "/.config/awesome/treesome/layo
 -- Globals
 --local trees = {}
 
+function Bintree:adjust_children_geo(para_data, sib_data, geo, geo_table, exact_geo)
+    if sib_data ~= nil then 
+        --debuginfo('dog')
+        --debuginfo(sibling)
+        if type(sib_data.data) == 'client' then
+            sib_client = sib_data.data
+            if type(para_data) == 'string' then 
+                para_split = para_data
+            else
+                para_split = para_data.data
+            end
+            sib_geo = geo_table[sib_client]
+
+            local new_geo = {}
+
+            if exact_geo == nil then 
+                if para_split == 'vertical' then 
+                    new_geo.x = sib_geo.x
+                    new_geo.y = math.min(geo.y, sib_geo.y)
+                    new_geo.height = sib_geo.height + geo.height
+                    new_geo.width = sib_geo.width
+                end
+
+
+                if para_split == 'horizontal' then 
+                    new_geo.y = sib_geo.y
+                    new_geo.x = math.min(geo.x, sib_geo.x)
+                    new_geo.width = sib_geo.width + geo.width
+                    new_geo.height = sib_geo.height
+                end
+            else
+                new_geo.x = geo.x
+                new_geo.y = geo.y
+                new_geo.width = geo.width
+                new_geo.height = geo.height
+            end
+
+            --if math.abs(geo.x - sib_geo.x) < 1  then 
+                --new_geo.x = sib_geo.x
+                --new_geo.y = math.min(geo.y, sib_geo.y)
+                --new_geo.height = sib_geo.height + geo.height
+                --new_geo.width = sib_geo.width
+            --end
+
+            --if math.abs(geo.y - sib_geo.y) < 1  then 
+                --new_geo.y = sib_geo.y
+                --new_geo.x = math.min(geo.x, sib_geo.x)
+                --new_geo.width = sib_geo.width + geo.width
+                --new_geo.height = sib_geo.height
+            --end
+
+            if next(new_geo) == nil then
+                debuginfo('emptye new_geo')
+            else
+                geo_table[sib_client] = new_geo
+            end
+            return true
+        else 
+            if type(para_data) == 'string' then 
+                para_split = para_data
+            else
+                para_split = para_data.data
+            end
+
+            local right_geo = {}
+            local left_geo = {}
+            if para_split == 'horizontal' then
+                if sib_data.data == 'vertical' then 
+                    right_geo.y = geo_table[sib_data.right.data].y
+                    right_geo.x = geo.x
+                    right_geo.width =  geo_table[sib_data.right.data].width + geo.width 
+                    right_geo.height = geo.height
+
+                    left_geo.y = geo_table[sib_data.left.data].y
+                    left_geo.x = geo.x
+                    left_geo.width =  geo_table[sib_data.left.data].width + geo.width 
+                    left_geo.height = geo.height
+                end
+
+                if sib_data.data == 'horizontal' then 
+
+                    ratio = geo_table[sib_data.right.data].width / (geo_table[sib_data.right.data].width + geo_table[sib_data.left.data].width)
+                    local total_avail = geo.width  +  geo_table[sib_data.right.data].width + geo_table[sib_data.left.data].width 
+
+                    right_geo.y = geo_table[sib_data.right.data].y
+                    right_geo.width = math.floor((geo.width  +  geo_table[sib_data.right.data].width + geo_table[sib_data.left.data].width ) * ratio)
+                    right_geo.height = geo.height
+
+                    left_geo.y = geo_table[sib_data.left.data].y
+                    left_geo.width = total_avail - right_geo.width
+                    left_geo.height = geo.height
+
+                    if geo_table[sib_data.left.data].x < geo_table[sib_data.right.data].x then
+                        left_geo.x = math.min(geo_table[sib_data.left.data].x, geo.x)  
+                        right_geo.x = left_geo.x + left_geo.width  
+                    else
+                        right_geo.x = math.min(geo_table[sib_data.right.data].x, geo.x)  
+                        left_geo.x = right_geo.x + right_geo.width  
+                    end
+
+                end
+            end
+
+            if type(sib_data.left.data) == 'client' then
+                Bintree:adjust_children_geo(para_split, sib_data.left, left_geo, geo_table, true)
+            end
+
+            --debuginfo(sib_data.data)
+
+            --if sib_data.data == 'horizontal' then 
+                --local right_geo = {}
+                --right_geo.y = geo.y + geo_table[sib_data.left.data].height
+                --right_geo.x = geo.x
+                --right_geo.width = geo.width
+                --right_geo.height = geo.height
+            --end
+
+            if type(sib_data.right.data) == 'client' then
+                Bintree:adjust_children_geo(para_split, sib_data.right, right_geo, geo_table, true)
+            end
+
+        end
+    end
+end
 
 -- get an unique identifier of a window
 local function hash(client)
@@ -206,39 +330,22 @@ local function do_treesome(p)
     if changed < 0 then
         if n > 0 then
             local tokens = {}
+            local sibling 
             for i, c in ipairs(p.clients) do
                 tokens[i] = hash(c)
             end
 
             for c, geo in pairs(trees[tag].geo) do
                 if awful.util.table.hasitem(p.clients, c) == nil then
-                    local sibling = trees[tag].t:getSibling(hash(c))
-                    if sibling ~= nil then 
-                        for _, sib_client in pairs(sibling) do 
-                            sib_geo = trees[tag].geo[sib_client]
+                    sibling = trees[tag].t:getSibling(hash(c))
+                    parent = trees[tag].t:getParent(hash(c))
+                    trees[tag].t:adjust_children_geo(parent, sibling, geo, trees[tag].geo)
 
-                            local new_geo = {}
-                            if math.abs(geo.x - sib_geo.x) < 1  then 
-                                new_geo.x = sib_geo.x
-                                new_geo.y = math.min(geo.y, sib_geo.y)
-                                new_geo.height = sib_geo.height + geo.height
-                                new_geo.width = sib_geo.width
-                            end
-
-                            if math.abs(geo.y - sib_geo.y) < 1  then 
-                                new_geo.y = sib_geo.y
-                                new_geo.x = math.min(geo.x, sib_geo.x)
-                                new_geo.width = sib_geo.width + geo.width
-                                new_geo.height = sib_geo.height
-                            end
-
-                            trees[tag].geo[sib_client] = new_geo
-                        end
-                        local pos = awful.util.table.hasitem(trees[tag].geo, c)
-                        table.remove(trees[tag].geo, pos)
-                    end
+                    local pos = awful.util.table.hasitem(trees[tag].geo, c)
+                    table.remove(trees[tag].geo, pos)
                 end
             end
+            --debuginfo(trees[tag].geo[sibling])
             --local sibling = trees[tag].t:getSibling(hash(c))
             trees[tag].t:filterClients(trees[tag].t, tokens)
         else
@@ -371,7 +478,7 @@ local function do_treesome(p)
                             old_focus_c.y = avail_geo.y
                         else
                             new_c.y = avail_geo.y 
-                            old_focus_c.y =avail_geo.x + new_c.height
+                            old_focus_c.y =avail_geo.y + new_c.height
                         end
 
                     end
@@ -437,7 +544,7 @@ function treesome.arrange(p)
 end
 
 
-local function mouse_resize_handler(c, corner, x, y, orientation)
+local function mouse_resize_handler(c, corner, x, y)
     local orientation = orientation or "tile"
     local wa = capi.screen[c.screen].workarea
     local mwfact = awful.tag.getmwfact()
@@ -446,44 +553,31 @@ local function mouse_resize_handler(c, corner, x, y, orientation)
     local offset = 0
     local corner_coords
     local coordinates_delta = {x=0,y=0}
+    
+    cursor = "cross"
+    --if g.height+15 > wa.height then
+        --offset = g.height * .5
+        --cursor = "sb_h_double_arrow"
+    --elseif not (g.y+g.height+15 > wa.y+wa.height) then
+        --offset = g.height
+    --end
+    --debuginfo(tostring(x)..' '..tostring(y))
+    debuginfo(tostring(wa.x)..' '..tostring(wa.y))
 
-    if orientation == "tile" then
-        cursor = "cross"
-        if g.height+15 > wa.height then
-            offset = g.height * .5
-            cursor = "sb_h_double_arrow"
-        elseif not (g.y+g.height+15 > wa.y+wa.height) then
-            offset = g.height
-        end
-        corner_coords = { x = wa.x + wa.width * mwfact, y = g.y + offset }
-    elseif orientation == "left" then
-        cursor = "cross"
-        if g.height+15 >= wa.height then
-            offset = g.height * .5
-            cursor = "sb_h_double_arrow"
-        elseif not (g.y+g.height+15 > wa.y+wa.height) then
-            offset = g.height
-        end
-        corner_coords = { x = wa.x + wa.width * (1 - mwfact), y = g.y + offset }
-    elseif orientation == "bottom" then
-        cursor = "cross"
-        if g.width+15 >= wa.width then
-            offset = g.width * .5
-            cursor = "sb_v_double_arrow"
-        elseif not (g.x+g.width+15 > wa.x+wa.width) then
-            offset = g.width
-        end
-        corner_coords = { y = wa.y + wa.height * mwfact, x = g.x + offset}
-    else
-        cursor = "cross"
-        if g.width+15 >= wa.width then
-            offset = g.width * .5
-            cursor = "sb_v_double_arrow"
-        elseif not (g.x+g.width+15 > wa.x+wa.width) then
-            offset = g.width
-        end
-        corner_coords = { y = wa.y + wa.height * (1 - mwfact), x= g.x + offset }
+    local pos_now = capi.mouse.coords()
+
+    if  (pos_now.x - g.x ) > g.width * 0.5 then
+        new_y = pos_now.y
+        new_x = g.x + g.width
     end
+
+    --if (x - g.x ) < g.width * 0.5 and ( y - g.y) < g.height * 0.5 then
+    cursor = "sb_v_double_arrow"
+    corner_coords = { x = new_x, y = new_y }   
+    --end
+    --corner_coords = { x = wa.x + wa.width * mwfact, y = g.y + offset }   
+    
+    
     if treesome.resize_jump_to_corner then
         capi.mouse.coords(corner_coords)
     else
@@ -524,22 +618,11 @@ local function mouse_resize_handler(c, corner, x, y, orientation)
                                       end
 
 
-                                      if orientation == "tile" then
-                                          mwfact = fact_x
-                                          wfact = wfact_y
-                                      elseif orientation == "left" then
-                                          mwfact = 1 - fact_x
-                                          wfact = wfact_y
-                                      elseif orientation == "bottom" then
-                                          mwfact = fact_y
-                                          wfact = wfact_x
-                                      else
-                                          mwfact = 1 - fact_y
-                                          wfact = wfact_x
-                                      end
+                                      mwfact = fact_x
+                                      wfact = wfact_y
 
-                                      awful.tag.setmwfact(math.min(math.max(mwfact, 0.01), 0.99), awful.tag.selected(c.screen))
-                                      awful.client.setwfact(math.min(math.max(wfact,0.01), 0.99), c)
+                                      --awful.tag.setmwfact(math.min(math.max(mwfact, 0.01), 0.99), awful.tag.selected(c.screen))
+                                      --awful.client.setwfact(math.min(math.max(wfact,0.01), 0.99), c)
                                       return true
                                   end
                               end
@@ -549,8 +632,8 @@ end
 
 
 
-function treesome.mouse_resize_handler (c, corner, x, y)
-    mouse_resize_handler(c, corner,x,y,'tile')
+function treesome.mouse_resize_handler(c, corner, x, y)
+    mouse_resize_handler(c, corner,x,y)
 end
 
 treesome.name = "treesome"
