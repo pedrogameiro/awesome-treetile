@@ -113,17 +113,24 @@ function Bintree:adjust_children_geo(para_data, sib_data, geo, geo_table, exact_
 
             local right_geo = {}
             local left_geo = {}
+            debuginfo(para_split)
             if para_split == 'horizontal' then
                 if sib_data.data == 'vertical' then 
-                    right_geo.y = geo_table[sib_data.right.data].y
-                    right_geo.x = geo.x
-                    right_geo.width =  geo_table[sib_data.right.data].width + geo.width 
-                    right_geo.height = geo.height
+                    if type(sib_data.right.data) == 'client' then 
+                        right_geo.y = geo_table[sib_data.right.data].y
+                        right_geo.x = geo.x
+                        right_geo.width =  geo_table[sib_data.right.data].width + geo.width 
+                        right_geo.height = geo.height
+                    elseif type(sib_data.right.data) == 'table' then
 
-                    left_geo.y = geo_table[sib_data.left.data].y
-                    left_geo.x = geo.x
-                    left_geo.width =  geo_table[sib_data.left.data].width + geo.width 
-                    left_geo.height = geo.height
+                    end
+
+                    if type(sib_data.left.data) == 'client' then
+                        left_geo.y = geo_table[sib_data.left.data].y
+                        left_geo.x = geo.x
+                        left_geo.width =  geo_table[sib_data.left.data].width + geo.width 
+                        left_geo.height = geo.height
+                    end
                 end
 
                 if sib_data.data == 'horizontal' then 
@@ -150,22 +157,57 @@ function Bintree:adjust_children_geo(para_data, sib_data, geo, geo_table, exact_
                 end
             end
 
-            if type(sib_data.left.data) == 'client' then
-                Bintree:adjust_children_geo(para_split, sib_data.left, left_geo, geo_table, true)
+            if para_split == 'vertical' then
+                if sib_data.data == 'horizontal' then 
+                    right_geo.y = geo_table[sib_data.right.data].y
+                    right_geo.x = geo.x
+                    right_geo.height =  geo_table[sib_data.right.data].height + geo.height
+                    right_geo.width = geo.width
+
+                    left_geo.y = geo_table[sib_data.left.data].y
+                    left_geo.x = geo.x
+                    left_geo.height =  geo_table[sib_data.left.data].height + geo.height
+                    left_geo.width = geo.width
+                end
+
+
+                if sib_data.data == 'vertical' then 
+
+                    ratio = geo_table[sib_data.right.data].height / (geo_table[sib_data.right.data].height + geo_table[sib_data.left.data].height)
+                    local total_avail = geo.height  +  geo_table[sib_data.right.data].height + geo_table[sib_data.left.data].height
+
+                    right_geo.x = geo_table[sib_data.right.data].x
+                    right_geo.height = math.floor((geo.height  +  geo_table[sib_data.right.data].height + geo_table[sib_data.left.data].height ) * ratio)
+                    right_geo.width = geo.width
+
+                    left_geo.x = geo_table[sib_data.left.data].x
+                    left_geo.height = total_avail - right_geo.height
+                    left_geo.width = geo.width
+
+                    if geo_table[sib_data.left.data].y < geo_table[sib_data.right.data].y then
+                        left_geo.y = math.min(geo_table[sib_data.left.data].y, geo.y)  
+                        right_geo.y = left_geo.y + left_geo.height 
+                    else
+                        right_geo.y = math.min(geo_table[sib_data.right.data].y, geo.y)  
+                        left_geo.y = right_geo.y + right_geo.height  
+                    end
+
+                end
             end
 
-            --debuginfo(sib_data.data)
+            if type(sib_data.left.data) == 'client' then
+                Bintree:adjust_children_geo(para_split, sib_data.left, left_geo, geo_table, true)
+            elseif type(sib_data.left.data) == 'table' then
+                local new_sib = sib_data.left.data
+                Bintree:adjust_children_geo(sib_data.left.data, new_sib.left, left_geo, geo_table, true)
+            end
 
-            --if sib_data.data == 'horizontal' then 
-                --local right_geo = {}
-                --right_geo.y = geo.y + geo_table[sib_data.left.data].height
-                --right_geo.x = geo.x
-                --right_geo.width = geo.width
-                --right_geo.height = geo.height
-            --end
 
             if type(sib_data.right.data) == 'client' then
                 Bintree:adjust_children_geo(para_split, sib_data.right, right_geo, geo_table, true)
+            elseif type(sib_data.right.data) == 'table' then
+                local new_sib = sib_data.right.data
+                Bintree:adjust_children_geo(sib_data.right.data, new_sib.right, right_geo, geo_table, true)
             end
 
         end
@@ -482,6 +524,9 @@ local function do_treesome(p)
                         end
 
                     end
+                    -- put the geometry of parament node into table too
+
+                    trees[tag].geo[focusNode] = avail_geo
 
                     -- put geometry of clients into tables
                     if focusId then
