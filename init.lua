@@ -29,9 +29,10 @@ local capi         = {
 }
 
 local treesome     = {
+    focusnew       = true,
     focusFirst     = false,
     name           = "treesome",
-    direction      = "left"
+    direction      = "right"
 }
 
     
@@ -46,183 +47,158 @@ beautiful.layout_treesome = os.getenv("HOME") .. "/.config/awesome/treesome/layo
 
 -- Globals
 --local trees = {}
+--
 
-function Bintree:adjust_children_geo(para_data, sib_data, geo, geo_table, exact_geo)
-    if sib_data ~= nil then 
-        --debuginfo('dog')
-        --debuginfo(sibling)
-        if type(sib_data.data) == 'client' then
-            sib_client = sib_data.data
-            if type(para_data) == 'string' then 
-                para_split = para_data
-            else
-                para_split = para_data.data
-            end
-            sib_geo = geo_table[sib_client]
-
-            local new_geo = {}
-
-            if exact_geo == nil then 
-                if para_split == 'vertical' then 
-                    new_geo.x = sib_geo.x
-                    new_geo.y = math.min(geo.y, sib_geo.y)
-                    new_geo.height = sib_geo.height + geo.height
-                    new_geo.width = sib_geo.width
-                end
-
-
-                if para_split == 'horizontal' then 
-                    new_geo.y = sib_geo.y
-                    new_geo.x = math.min(geo.x, sib_geo.x)
-                    new_geo.width = sib_geo.width + geo.width
-                    new_geo.height = sib_geo.height
-                end
-            else
-                new_geo.x = geo.x
-                new_geo.y = geo.y
-                new_geo.width = geo.width
-                new_geo.height = geo.height
-            end
-
-            --if math.abs(geo.x - sib_geo.x) < 1  then 
-                --new_geo.x = sib_geo.x
-                --new_geo.y = math.min(geo.y, sib_geo.y)
-                --new_geo.height = sib_geo.height + geo.height
-                --new_geo.width = sib_geo.width
-            --end
-
-            --if math.abs(geo.y - sib_geo.y) < 1  then 
-                --new_geo.y = sib_geo.y
-                --new_geo.x = math.min(geo.x, sib_geo.x)
-                --new_geo.width = sib_geo.width + geo.width
-                --new_geo.height = sib_geo.height
-            --end
-
-            if next(new_geo) == nil then
-                debuginfo('emptye new_geo')
-            else
-                geo_table[sib_client] = new_geo
-            end
-            return true
-        else 
-            if type(para_data) == 'string' then 
-                para_split = para_data
-            else
-                para_split = para_data.data
-            end
-
-            local right_geo = {}
-            local left_geo = {}
-            debuginfo(para_split)
-            if para_split == 'horizontal' then
-                if sib_data.data == 'vertical' then 
-                    if type(sib_data.right.data) == 'client' then 
-                        right_geo.y = geo_table[sib_data.right.data].y
-                        right_geo.x = geo.x
-                        right_geo.width =  geo_table[sib_data.right.data].width + geo.width 
-                        right_geo.height = geo.height
-                    elseif type(sib_data.right.data) == 'table' then
-
-                    end
-
-                    if type(sib_data.left.data) == 'client' then
-                        left_geo.y = geo_table[sib_data.left.data].y
-                        left_geo.x = geo.x
-                        left_geo.width =  geo_table[sib_data.left.data].width + geo.width 
-                        left_geo.height = geo.height
-                    end
-                end
-
-                if sib_data.data == 'horizontal' then 
-
-                    ratio = geo_table[sib_data.right.data].width / (geo_table[sib_data.right.data].width + geo_table[sib_data.left.data].width)
-                    local total_avail = geo.width  +  geo_table[sib_data.right.data].width + geo_table[sib_data.left.data].width 
-
-                    right_geo.y = geo_table[sib_data.right.data].y
-                    right_geo.width = math.floor((geo.width  +  geo_table[sib_data.right.data].width + geo_table[sib_data.left.data].width ) * ratio)
-                    right_geo.height = geo.height
-
-                    left_geo.y = geo_table[sib_data.left.data].y
-                    left_geo.width = total_avail - right_geo.width
-                    left_geo.height = geo.height
-
-                    if geo_table[sib_data.left.data].x < geo_table[sib_data.right.data].x then
-                        left_geo.x = math.min(geo_table[sib_data.left.data].x, geo.x)  
-                        right_geo.x = left_geo.x + left_geo.width  
-                    else
-                        right_geo.x = math.min(geo_table[sib_data.right.data].x, geo.x)  
-                        left_geo.x = right_geo.x + right_geo.width  
-                    end
-
-                end
-            end
-
-            if para_split == 'vertical' then
-                if sib_data.data == 'horizontal' then 
-                    right_geo.y = geo_table[sib_data.right.data].y
-                    right_geo.x = geo.x
-                    right_geo.height =  geo_table[sib_data.right.data].height + geo.height
-                    right_geo.width = geo.width
-
-                    left_geo.y = geo_table[sib_data.left.data].y
-                    left_geo.x = geo.x
-                    left_geo.height =  geo_table[sib_data.left.data].height + geo.height
-                    left_geo.width = geo.width
-                end
-
-
-                if sib_data.data == 'vertical' then 
-
-                    ratio = geo_table[sib_data.right.data].height / (geo_table[sib_data.right.data].height + geo_table[sib_data.left.data].height)
-                    local total_avail = geo.height  +  geo_table[sib_data.right.data].height + geo_table[sib_data.left.data].height
-
-                    right_geo.x = geo_table[sib_data.right.data].x
-                    right_geo.height = math.floor((geo.height  +  geo_table[sib_data.right.data].height + geo_table[sib_data.left.data].height ) * ratio)
-                    right_geo.width = geo.width
-
-                    left_geo.x = geo_table[sib_data.left.data].x
-                    left_geo.height = total_avail - right_geo.height
-                    left_geo.width = geo.width
-
-                    if geo_table[sib_data.left.data].y < geo_table[sib_data.right.data].y then
-                        left_geo.y = math.min(geo_table[sib_data.left.data].y, geo.y)  
-                        right_geo.y = left_geo.y + left_geo.height 
-                    else
-                        right_geo.y = math.min(geo_table[sib_data.right.data].y, geo.y)  
-                        left_geo.y = right_geo.y + right_geo.height  
-                    end
-
-                end
-            end
-
-            if type(sib_data.left.data) == 'client' then
-                Bintree:adjust_children_geo(para_split, sib_data.left, left_geo, geo_table, true)
-            elseif type(sib_data.left.data) == 'table' then
-                local new_sib = sib_data.left.data
-                Bintree:adjust_children_geo(sib_data.left.data, new_sib.left, left_geo, geo_table, true)
-            end
-
-
-            if type(sib_data.right.data) == 'client' then
-                Bintree:adjust_children_geo(para_split, sib_data.right, right_geo, geo_table, true)
-            elseif type(sib_data.right.data) == 'table' then
-                local new_sib = sib_data.right.data
-                Bintree:adjust_children_geo(sib_data.right.data, new_sib.right, right_geo, geo_table, true)
-            end
-
-        end
-    end
-end
-
--- get an unique identifier of a window
 local function hash(client)
     if client then
-        --return client.window
-        return client
+        return client.window
+        --return client
     else
         return nil
     end
 end
+
+function Bintree:update_node_geo(parent_geo, geo_table)
+
+    local left_node_geo = nil
+    local right_node_geo = nil
+    if type(self.data) == 'number' then 
+        -- this node is a client
+        -- if the sibling is a client, resize this client
+        -- to the size of its parent space to fill the empty space
+
+        if type(parent_geo) == "table" then
+            geo_table[self.data] = parent_geo
+        else
+            debuginfo("udpate_geo errors")
+        end
+
+        return
+    end
+
+    if type(self.data) == 'table' then
+        -- sibling is another table, need to update the all discents. 
+        local now_geo = nil
+        now_geo = awful.util.table.clone(self.data)
+        self.data = awful.util.table.clone(parent_geo)
+
+        --debuginfo('type left '..type(sib_data.left.data))
+        --debuginfo('type left '..type(sib_data.right.data))
+        --
+
+        --if type(sib_data.left.data) == 'table' then
+            ---- update_tables
+            --slib_data.left:update_geo_table(parent_geo)
+        --end
+        if type(self.left.data) == 'number'  then
+            left_node_geo = awful.util.table.clone(geo_table[self.left.data])
+        end
+
+        if type(self.left.data) == 'table' then
+            left_node_geo = awful.util.table.clone(self.left.data)
+        end
+
+        if type(self.right.data) == 'number'  then
+            right_node_geo = awful.util.table.clone(geo_table[self.right.data])
+        end
+
+        if type(self.right.data) == 'table' then
+            right_node_geo = awful.util.table.clone(self.right.data)
+        end
+        
+
+        -- {{{ vertical split 
+        if math.abs(left_node_geo.x - right_node_geo.x) < 0.2 then
+            -- split in vertical way
+            if parent_geo.width > now_geo.width + 0.2 then
+                left_node_geo.width = parent_geo.width 
+                right_node_geo.width = parent_geo.width 
+
+                local new_x = math.min(left_node_geo.x, parent_geo.x)
+
+                left_node_geo.x = new_x
+                right_node_geo.x = new_x
+            end
+
+            if parent_geo.height > now_geo.height + 0.2 then
+
+                if treesome.direction == 'left' then 
+                    left_node_geo, right_node_geo = right_node_geo, left_node_geo
+                end
+
+                local new_y = math.min(left_node_geo.y, parent_geo.y)
+
+                r_l_ratio = left_node_geo.height / now_geo.height
+
+                left_node_geo.height = parent_geo.height * r_l_ratio
+                right_node_geo.height = parent_geo.height - left_node_geo.height
+                
+                left_node_geo.y = new_y
+                right_node_geo.y = new_y + left_node_geo.height
+
+            end
+        end
+        -- }}}
+
+        -- {{{ horizontal split
+        if math.abs(left_node_geo.y - right_node_geo.y) < 0.2 then
+            --debuginfo("horizontal am in")
+            -- split in horizontal way
+            if parent_geo.height > now_geo.height + 0.2 then
+                left_node_geo.height = parent_geo.height
+                right_node_geo.height = parent_geo.height
+
+                local new_y = math.min(parent_geo.y,  left_node_geo.y)
+
+                left_node_geo.y = new_y
+                right_node_geo.y = new_y
+            end
+
+            if parent_geo.width > now_geo.width + 0.2 then
+
+                if treesome.direction == 'left' then 
+                    left_node_geo, right_node_geo = right_node_geo, left_node_geo
+                end
+
+                local new_x = math.min(left_node_geo.x, parent_geo.x)
+
+                r_l_ratio = left_node_geo.width / now_geo.width
+
+                left_node_geo.width = parent_geo.width * r_l_ratio
+                right_node_geo.width = parent_geo.width - left_node_geo.width
+                
+                left_node_geo.x = new_x
+                right_node_geo.x = new_x + left_node_geo.width
+
+            end
+
+        end
+        -- }}}
+        
+
+        if type(self.left.data) == 'number' then
+            geo_table[self.left.data] = left_node_geo
+        end 
+
+        if type(self.right.data) == 'number' then
+            geo_table[self.right.data] = right_node_geo
+        end 
+
+
+        if type(self.left.data) == 'table' then
+           self.left:update_node_geo(left_node_geo, geo_table)
+        end
+
+        if type(self.right.data) == 'table' then
+           self.right:update_node_geo(right_node_geo, geo_table)
+        end
+
+
+    end
+
+end
+
+-- get an unique identifier of a window
 
 local function table_find(tbl, item)
     for key, value in pairs(tbl) do
@@ -275,7 +251,7 @@ end
 function Bintree:filterClients(node, clients)
     if node then
         if node.data and not table_find(clients, node.data) and
-            node.data ~= "horizontal" and node.data ~= "vertical" then
+            type(node.data) == 'number' then
             self:removeLeaf(node.data)
         end
 
@@ -289,6 +265,7 @@ function Bintree:filterClients(node, clients)
         end
     end
 end
+
 
 local function setslave(client)
     if not trees[tostring(awful.tag.selected(capi.mouse.screen))] then
@@ -317,20 +294,31 @@ local function do_treesome(p)
     local area = p.workarea
     local n = #p.clients
 
-    local tag = tostring(awful.tag.selected(capi.mouse.screen))
+    local tag = tostring(p.tag or awful.tag.selected(p.screen))
+    -- t is tree structure to record the clients
+    -- geo is the tree structure to record the geometries of clients
+    --
     if not trees[tag] then
         trees[tag] = {
             t = nil,
             lastFocus = nil,
             clients = nil,
+            geo_tree = nil,
             geo = nil,
             n = 0
         }
     end
 
     if trees[tag] ~= nil then
-        focus = capi.client.focus
-
+        --focus=awful.client.focus.history.previous()
+        --focus = capi.client.focus
+        -- get the latest focused client
+        if treesome.focusnew then
+            focus = awful.client.focus.history.get(p.screen,1)
+        else
+            focus = capi.client.focus
+        end
+        
         if focus ~= nil then
             if awful.client.floating.get(focus) then
                 focus = nil
@@ -338,7 +326,9 @@ local function do_treesome(p)
                 trees[tag].lastFocus = focus
             end
         end
+
     end
+
 
     -- rearange only on change
     local changed = 0
@@ -372,24 +362,48 @@ local function do_treesome(p)
     if changed < 0 then
         if n > 0 then
             local tokens = {}
-            local sibling 
             for i, c in ipairs(p.clients) do
                 tokens[i] = hash(c)
             end
 
-            for c, geo in pairs(trees[tag].geo) do
-                if awful.util.table.hasitem(p.clients, c) == nil then
-                    sibling = trees[tag].t:getSibling(hash(c))
-                    parent = trees[tag].t:getParent(hash(c))
-                    trees[tag].t:adjust_children_geo(parent, sibling, geo, trees[tag].geo)
+            for clid, geo in pairs(trees[tag].geo) do
+                if awful.util.table.hasitem(tokens, clid) == nil then
+                    -- update the size of clients left, fill the empty space left by the 
+                    -- destroyed clients
 
-                    local pos = awful.util.table.hasitem(trees[tag].geo, c)
+                    local sib_node = trees[tag].geo_tree:getSibling(clid)
+                    local parent = trees[tag].geo_tree:getParent(clid)
+                    local parent_geo = nil
+                    
+                    if parent then
+                        parent_geo = parent.data
+                    end
+                    --print 'test parent---'
+                    --Bintree.show2(trees[tag].geo_tree:getParent(clid))
+
+                    --debuginfo('test p geo '..tostring(trees[tag].geo_tree:getParent(ccl
+                    --debuginfo('test p '..tostring(trees[tag].t:getParent(hash(ccl))))
+
+                    if sib_node ~= nil then 
+                        sib_node:update_node_geo(parent_geo, trees[tag].geo)
+                    end
+                    --
+                    --parent = trees[tag].geo_tree:getParent(hash(c))
+                    --if type(parent) == 'table' then 
+                        --debuginfo(parent.data)
+                    --else
+                        --debuginfo("no parent")
+                    --end
+                    --trees[tag].geo_tree:update_geo(sibling)
+                    local pos = awful.util.table.hasitem(trees[tag].geo, clid)
                     table.remove(trees[tag].geo, pos)
                 end
             end
-            --debuginfo(trees[tag].geo[sibling])
-            --local sibling = trees[tag].t:getSibling(hash(c))
+
+            trees[tag].geo_tree:filterClients(trees[tag].geo_tree, tokens)
             trees[tag].t:filterClients(trees[tag].t, tokens)
+
+            --awful.client.jumpto(trees[tag].lastFocus)
         else
             trees[tag] = nil
         end
@@ -408,23 +422,26 @@ local function do_treesome(p)
 
                 local focusNode = nil
                 local focusGeometry = nil
+                local focusNode_geo_tree = nil
                 local focusId = nil
-                local focusCl = nil
+                --local focusCl = nil
 
                 if trees[tag].t and focus and hash(c) ~= hash(focus)  and not layoutSwitch then
                     -- split focused window
-                    --debuginfo('is switch')
+                    -- find the focused client
                     focusNode = trees[tag].t:find(hash(focus))
+                    focusNode_geo_tree = trees[tag].geo_tree:find(hash(focus))
                     focusGeometry = focus:geometry()
                     focusId = hash(focus)
-                    focusCl = focus
+                    --focusCl = focus
                 else
                     -- the layout was switched with more clients to order at once
                     if prevClient then
                         focusNode = trees[tag].t:find(hash(prevClient))
+                        focusNode_geo_tree = trees[tag].geo_tree:find(hash(prevClient))
                         nextSplit = (nextSplit + 1) % 2
                         focusId = hash(prevClient)
-                        focusCl = prevClient
+                        --focusCl = prevClient
                         --focusGeometry = prevClient:geometry()
 
                     else
@@ -432,13 +449,16 @@ local function do_treesome(p)
                             -- create as root
                             trees[tag].t = Bintree.new(hash(c))
                             focusId = hash(c)
-                            focusCl = c
+                            --focusCl = c
                             focusGeometry = {
                                 width = 0,
                                 height = 0
                             }
+                            trees[tag].geo_tree = Bintree.new(hash(c))
                             trees[tag].geo = {}
-                            trees[tag].geo[c] = area
+                            trees[tag].geo[hash(c)] = area
+                            --focusNode = trees[tag].t
+                            --focusNode_geo_tree = trees[tag].geo_tree
                         end
                     end
                 end
@@ -462,10 +482,14 @@ local function do_treesome(p)
 
                     if treesome.focusFirst then
                         focusNode:addLeft(Bintree.new(focusId))
+                        focusNode_geo_tree:addLeft(Bintree.new(focusId))
                         focusNode:addRight(Bintree.new(hash(c)))
+                        focusNode_geo_tree:addRight(Bintree.new(hash(c)))
                     else
                         focusNode:addLeft(Bintree.new(hash(c)))
+                        focusNode_geo_tree:addLeft(Bintree.new(hash(c)))
                         focusNode:addRight(Bintree.new(focusId))
+                        focusNode_geo_tree:addRight(Bintree.new(focusId))
                     end
 
                     -- Useless gap.
@@ -474,7 +498,7 @@ local function do_treesome(p)
                         useless_gap = 0
                     end
 
-                    local avail_geo 
+                    local avail_geo =nil
 
                     if focusGeometry then 
                         if focusGeometry.height == 0 and focusGeometry.width == 0 then
@@ -486,8 +510,16 @@ local function do_treesome(p)
                         avail_geo = area
                     end
 
+
                     local new_c = {}
                     local old_focus_c = {}
+
+                    focusNode_geo_tree.data = awful.util.table.clone(avail_geo)
+                    --debuginfo('parent node geo '..tostring(focusNode_geo_tree))
+                    --debuginfo('parent node '..tostring(focusNode))
+                    --Bintree.show2(trees[tag].geo_tree)
+                    --print('-----')
+
 
                     if focusNode.data == "horizontal" then
                         new_c.width = math.floor((avail_geo.width - useless_gap) / 2.0 )
@@ -498,7 +530,7 @@ local function do_treesome(p)
                         new_c.y = avail_geo.y
 
 
-                        if direction == treesome.direction then
+                        if treesome.direction == "right" then
                             new_c.x = avail_geo.x + new_c.width
                             old_focus_c.x = avail_geo.x
                         else
@@ -515,7 +547,7 @@ local function do_treesome(p)
                         old_focus_c.x = avail_geo.x
                         new_c.x = avail_geo.x
 
-                        if direction == treesome.direction then
+                        if  treesome.direction == "right" then
                             new_c.y = avail_geo.y + new_c.height
                             old_focus_c.y = avail_geo.y
                         else
@@ -525,15 +557,14 @@ local function do_treesome(p)
 
                     end
                     -- put the geometry of parament node into table too
-
-                    trees[tag].geo[focusNode] = avail_geo
+                    
 
                     -- put geometry of clients into tables
                     if focusId then
-                        trees[tag].geo[focusCl] = old_focus_c
-                        trees[tag].geo[c] = new_c
+                        trees[tag].geo[focusId] = old_focus_c
+                        trees[tag].geo[hash(c)] = new_c
                     end
-
+                
 
                 end
             end
@@ -548,16 +579,20 @@ local function do_treesome(p)
         if n >= 1 then
             for i, c in ipairs(p.clients) do
 
-                local clientNode = trees[tag].t:find(hash(c))
-                local path = {}
                 local geo = nil
+                geo = trees[tag].geo[hash(c)]
+                if type(geo) == 'table' then 
+                    c:geometry(geo)
+                else
+                    debuginfo("wrong geometry")
+                end
 
-                geo = trees[tag].geo[c]
+
                 --debuginfo(tostring(trees[tag].geo.x).." "..
                 --p.geometries[c] = geo
                 --local sibling = trees[tag].t:getSibling(hash(c))
 
-                c:geometry(geo)
+                --c:geometry(geo)
             end
         end
     end
@@ -682,16 +717,5 @@ function treesome.mouse_resize_handler(c, corner, x, y)
 end
 
 treesome.name = "treesome"
-
-
---local function debuginfo( message )
-    --if type(message) == "table" then
-        --for k,v in pairs(message) do 
-            --naughty.notify({ text = "key: "..k.." value: "..tostring(message), timeout = 10 })
-        --end
-    --else 
-        --nid = naughty.notify({ text = message, timeout = 10 })
-    --end
---end
 
 return treesome

@@ -107,17 +107,23 @@ function Bintree:getParent(data)
     local output = nil
     if type(self.left) == "table" then
         if self.left.data == data then
+            --print('L branch found')
             return self
         end
         output = self.left:getParent(data) or nil
     end
 
+
     if type(self.right) == "table" then
         if self.right.data == data then
+            --print('R branch found')
             return self
         end
-        return output or self.right:getParent(data) or self
+        output = output or self.right:getParent(data) or nil
     end
+
+    return output or nil
+
 end
 
 function Bintree:swapLeaves(data1, data2)
@@ -140,6 +146,24 @@ function Bintree.show(node, level)
         print(string.rep(" ", level) .. "Node[" .. node.data .. "]")
         Bintree.show(node.left, level + 1)
         Bintree.show(node.right, level + 1)
+    end
+end
+
+function Bintree.show2(node, level, d)
+    if level == nil then
+        level = 0
+    end
+    if d == nil then
+        d=''
+    end
+    if node ~= nil then
+        if type(node.data) == 'number' then
+            print(string.rep(" ", level) .. d.."Node[" .. node.data .. "]")
+        else
+            print(string.rep(" ", level) .. d.."Node[" .. tostring(node.data.x)..' '..tostring(node.data.y)..' '..tostring(node.data.height)..' '..tostring(node.data.width) .. "]")
+        end
+        Bintree.show2(node.left, level + 1, 'L_')
+        Bintree.show2(node.right, level + 1, 'R_')
     end
 end
 
