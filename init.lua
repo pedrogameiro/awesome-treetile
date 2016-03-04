@@ -37,6 +37,8 @@ local treesome     = {
 
     
 
+
+-- Globals
 local forceSplit = nil
 local trees = {}
 
@@ -45,10 +47,10 @@ treesome.resize_jump_to_corner = true
 -- Layout icon
 beautiful.layout_treesome = os.getenv("HOME") .. "/.config/awesome/treesome/layout_icon.png"
 
--- Globals
 --local trees = {}
 --
 
+-- get an unique identifier of a window
 local function hash(client)
     if client then
         return client.window
@@ -63,33 +65,24 @@ function Bintree:update_node_geo(parent_geo, geo_table)
     local left_node_geo = nil
     local right_node_geo = nil
     if type(self.data) == 'number' then 
-        -- this node is a client
-        -- if the sibling is a client, resize this client
-        -- to the size of its parent space to fill the empty space
+        -- this node is a client. if the sibling is a client, just resize this client
+        -- to the size of its parent node space.
 
         if type(parent_geo) == "table" then
             geo_table[self.data] = parent_geo
         else
-            debuginfo("udpate_geo errors")
+            print ('geometry table error errors, init.lua, line 70')
         end
 
         return
     end
 
     if type(self.data) == 'table' then
-        -- sibling is another table, need to update the all discents. 
+        -- the sibling is another table, need to update the all descendants.
         local now_geo = nil
         now_geo = awful.util.table.clone(self.data)
         self.data = awful.util.table.clone(parent_geo)
 
-        --debuginfo('type left '..type(sib_data.left.data))
-        --debuginfo('type left '..type(sib_data.right.data))
-        --
-
-        --if type(sib_data.left.data) == 'table' then
-            ---- update_tables
-            --slib_data.left:update_geo_table(parent_geo)
-        --end
         if type(self.left.data) == 'number'  then
             left_node_geo = awful.util.table.clone(geo_table[self.left.data])
         end
@@ -198,7 +191,6 @@ function Bintree:update_node_geo(parent_geo, geo_table)
 
 end
 
--- get an unique identifier of a window
 
 local function table_find(tbl, item)
     for key, value in pairs(tbl) do
