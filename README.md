@@ -22,40 +22,39 @@ Use
 
 3. And finally add the layout `treesome` to your layout table.
 
-```
+  ```
     local layouts = {
         ...
         treesome
     }
-```
-
-4.  Options:
- * if you set the in the rc.lua to let the new created client gain the focus, 
+  ```
+4. Options
+   if you set the in the rc.lua to let the new created client gain the focus, 
 for example: 
-```
-...
+    ```
+    ...
     { rule = { },
       properties = { focus = awful.client.focus.filter,
-...
-```
+   ...
+   ```
 you should set the following option to make sure treesome works correctly
 
-```
-treesome.focusnew = true 
+   ```
+   treesome.focusnew = true 
 
-```
+   ```
 Otherwise set 
-```
-treesome.focusnew = false
+   ```
+    treesome.focusnew = false
 
-```
- * The following option control the new client apprear on the left or the right side
+    ```
+  The following option control the new client apprear on the left or the right side
 of current client.
+  
+   ```
+   treesome.direction = "right" -- or "left"
 
-```
-treesome.direction = "right" -- or "left"
-
-```
+   ```
 
 5. Restart and you're done.
 
