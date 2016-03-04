@@ -30,7 +30,7 @@ Use
 ```
 
 4. options:
-4.1 if you set the in the rc.lua to let the new created client gain the focus, 
+ * 4.1.  if you set the in the rc.lua to let the new created client gain the focus, 
 for example: 
 ```
 ...
@@ -49,16 +49,13 @@ Otherwise set
 treesome.focusnew = false
 
 ```
-4.2 The following option control the new client apprear on the left or the right side
+ * 4.2.  The following option control the new client apprear on the left or the right side
 of current client.
 
 ```
 treesome.direction = "right" -- or "left"
 
 ```
-
-
-
 
 5. Restart and you're done.
 
@@ -80,6 +77,9 @@ Screenshots
 
 ![screenshot](./screenshot.png)
 
+TODO
+----------
+1. supporting the resizing of clients by mouse or keyboard.
 
 
 Licence
