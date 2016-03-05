@@ -360,8 +360,11 @@ local function do_treesome(p)
     local layoutSwitch = false
     local update = false
 
+    debuginfo(tostring(trees[tag].n)..' '..tostring(n))
+
     if trees[tag].n ~= n then
         if math.abs(n - trees[tag].n) > 1 then
+            debuginfo('layout change')
             layoutSwitch = true
         end
         if not trees[tag].n or n > trees[tag].n then
@@ -372,6 +375,7 @@ local function do_treesome(p)
         trees[tag].n = n
     else
         if trees[tag].clients then
+            debuginfo('switch clients')
             local diff = table_diff(p.clients, trees[tag].clients)
             if diff and #diff == 2 then
                 trees[tag].t:swapLeaves(hash(diff[1]), hash(diff[2]))
@@ -447,6 +451,7 @@ local function do_treesome(p)
                 else
                     -- the layout was switched with more clients to order at once
                     if prevClient then
+                        debuginfo('layout change')
                         focusNode = trees[tag].t:find(hash(prevClient))
                         focusNode_geo_tree = trees[tag].geo_tree:find(hash(prevClient))
                         nextSplit = (nextSplit + 1) % 2
@@ -455,6 +460,7 @@ local function do_treesome(p)
                         focusId = hash(prevClient)
 
                     else
+                        debuginfo('new root')
                         if not trees[tag].t then
                             -- created as root
                             trees[tag].t = Bintree.new(hash(c))
@@ -577,6 +583,7 @@ local function do_treesome(p)
 
 
     -- draw it
+    debuginfo(update)
     if changed ~= 0 or layoutSwitch or update then
         if n >= 1 then
             for i, c in ipairs(p.clients) do
