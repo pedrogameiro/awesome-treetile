@@ -13,7 +13,7 @@ Use
 
 1. Clone repository to your awesome directory
 
-    `git clone http://github.com/RobSis/treesome.git ~/.config/awesome/treesome`
+    `git clone http://github.com/guotsuan/treesome.git ~/.config/awesome/treesome`
 
 2. Add this line to your rc.lua below other require calls.
 
@@ -35,7 +35,8 @@ Use
     
         ...
             { rule = { },
-              properties = { focus = awful.client.focus.filter,
+              properties = { focus = awful.client.focus.filter, 
+                 -- or focus = true,
 
         ...
     ```
@@ -44,7 +45,7 @@ Use
 
         treesome.focusnew = true  
 
-    Otherwise set 
+    If no extra settings about focus added in your rc.lua, please set 
 
         treesome.focusnew = false
 
@@ -57,7 +58,7 @@ Use
         treesome.direction = "right" -- or "left"
     ```
 
-5. Restart and you're done.
+5. Restart and you're done. You can resize the client by mouse if you want.
 
 
 ### Optional steps
@@ -79,7 +80,7 @@ Screenshots
 
 TODO
 ----------
-1. supporting the resizing of clients by mouse or keyboard.
+1. The resizing of clients are partially implmented.
 
 
 Licence
