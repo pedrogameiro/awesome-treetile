@@ -605,6 +605,126 @@ local function do_treesome(p)
     end
 end
 
+local function clip(v, min, max)
+    return math.max(math.min(v,max), min)
+end
+
+
+function treesome.resize_client(inc)  --{{{ resize client
+    -- inc: percentage of change: 0.01, 0.99 with +/-
+    local focus_c = capi.client.focus
+    local g = focus_c:geometry()
+
+    local tag = tostring(awful.tag.selected(focus_c.screen))
+
+    local parent_node = trees[tag].geo_t:getParent(hash(focus_c))
+    local parent_c = trees[tag].t:getParent(hash(focus_c))
+    local parent_geo
+
+    if parent_node then
+        parent_geo = parent_node.data
+    else
+        return
+    end
+
+    local new_geo = {}
+    local new_sib = {}
+  
+    local min_y = 5.0
+    local min_x = 5.0
+
+    new_geo.x = g.x
+    new_geo.y = g.y
+    new_geo.width = g.width
+    new_geo.height = g.height
+
+    local fact_y
+    local fact_x
+
+    if parent_c.data =='vertical' then
+        if inc < 0 then 
+            fact_y = - clip(g.height * clip(math.abs(inc), 0.01, 0.99), 2, 30)
+        else
+            fact_y = clip(g.height * clip(math.abs(inc), 0.01, 0.99), 2, 30)
+        end
+
+    end
+  
+    if parent_c.data =='horizontal' then
+        if inc < 0 then 
+            fact_x = - clip(g.width * clip(math.abs(inc), 0.01, 0.99), 2, 30)
+        else
+            fact_x = clip(g.width * clip(math.abs(inc), 0.01, 0.99), 2, 30)
+        end
+    end
+
+
+    if parent_c.data =='vertical' then
+
+        if g.y + g.height + 2.5 > parent_geo.y + parent_geo.height then
+
+            new_geo.height = math.min(math.max(g.height - fact_y, min_y), parent_geo.height - min_y)
+            new_geo.y= math.min(math.max(g.y + fact_y, min_y), parent_geo.y + parent_geo.height - min_y)
+  
+            new_sib.x = parent_geo.x
+            new_sib.y = parent_geo.y
+            new_sib.width = parent_geo.width
+            new_sib.height = parent_geo.height - new_geo.height
+        else
+            new_geo.y = g.y 
+            new_geo.height = math.max(math.min(g.height + fact_y, parent_geo.height - min_y), min_y)
+  
+            new_sib.x = new_geo.x
+            new_sib.y = new_geo.y + new_geo.height
+            new_sib.width = parent_geo.width
+            new_sib.height = parent_geo.height - new_geo.height
+        end
+    end
+  
+    
+    if parent_c.data =='horizontal' then
+        if g.x + g.width + 2.5 > parent_geo.x + parent_geo.width  then
+
+            new_geo.width = math.min(math.max(g.width - fact_x, min_x), parent_geo.width - min_x)
+            new_geo.x = math.min(math.max(g.x + fact_x, min_x), parent_geo.x + parent_geo.width - min_x)
+            
+            new_sib.y = parent_geo.y 
+            new_sib.x = parent_geo.x 
+            new_sib.height = parent_geo.height 
+            new_sib.width = parent_geo.width - new_geo.width
+        else
+            new_geo.x = g.x 
+            new_geo.width = math.max(math.min(g.width + fact_x, parent_geo.width - min_x), min_x)
+  
+            new_sib.y = parent_geo.y 
+            new_sib.x = parent_geo.x + new_geo.width
+            new_sib.height = parent_geo.height 
+            new_sib.width = parent_geo.width - new_geo.width
+        end
+    end
+  
+
+  trees[tag].geo[hash(focus_c)] = new_geo
+
+  local sib_node = trees[tag].geo_t:getSibling(hash(focus_c))
+
+   if sib_node ~= nil then 
+       sib_node:update_nodes_geo(new_sib, trees[tag].geo)
+   end
+
+
+  for _, c in ipairs(trees[tag].clients) do
+        local geo = nil
+        geo = trees[tag].geo[hash(c)]
+        if type(geo) == 'table' then 
+            c:geometry(geo)
+        else
+            print ("wrong geometry in init.lua: line 695")
+        end
+   end
+
+end--}}}
+
 
 function treesome.arrange(p)
     return do_treesome(p)
