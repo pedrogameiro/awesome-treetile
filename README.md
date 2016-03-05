@@ -8,7 +8,7 @@ split vertically or horizontally and shared equally by the new and the previous
 focused client (descendants).  Each time the spilt can either be specified or depends on
 which side (width or height) of the screen area of the previous focused client (progenitor)
 is longer. If you want, you can also manually resize these two descendants with
-respect to each other, but only in the frame of screen area occupied by the
+respect to each other by the keyboad or mouse, but only in the frame of screen area occupied by the
 progenitor (which can be improved in the future).  
 
 This project is forked from (https://github.com/RobSis/treesome) and still under the development.
@@ -68,15 +68,39 @@ Configuration
     treesome.direction = "right" -- or "left"
     ```
 
-1. By default, direction of split is decided based on the dimensions of the last focused
+2. By default, direction of split is decided based on the dimensions of the last focused
    client. If you want you to force the direction of the split, bind keys to
    `treesome.vertical` and `treesome.horizontal` functions. For example:
-
-    ```lua
+```lua
     awful.key({ modkey }, "v", treesome.vertical),
     awful.key({ modkey }, "h", treesome.horizontal)
-    ```
+```
 
+3. Set the keyboad shortcut for resizing the descendant clients
+   ` treesome.resize_client(inc) `. The value of inc can be from 0.01 to 0.99,
+   negative or postive, for example:
+```lua
+    ...
+    awful.key({ modkey, "Shift"   }, "h", function ()
+            local c = client.focus
+            if awful.layout.get(c.screen).name ~= "treesome" then
+                awful.client.moveresize(-20,0,0,0) 
+            else
+                treesome.resize_client(-0.1) 
+                -- increase or decrease by percentage of current width or height, 
+                -- the value can be from 0.01 to 0.99, negative or postive
+            end 
+            end),   
+    awful.key({ modkey, "Shift"   }, "l", function () 
+            local c = client.focus
+            if awful.layout.get(c.screen).name ~= "treesome" then
+                awful.client.moveresize(20,0,0,0) 
+            else
+                treesome.resize_client(0.1)
+            end 
+            end),
+    ...
+```
 
 Screenshots
 -----------
