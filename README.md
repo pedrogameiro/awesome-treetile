@@ -57,7 +57,6 @@ Use
         treesome.direction = "right" -- or "left"
     ```
 
-
 5. Restart and you're done.
 
 
