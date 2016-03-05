@@ -1,10 +1,9 @@
 Treesome
 ========
 
-Treesome is binary tree-based, dyamic tiling layout for Awesome 3.4 and latter.
+Treesome is binary tree-based, dyamic tiling layout for Awesome 3.5 and latter.
 Similarly to tmux, it can split current workeare either vertically or
 horizontally, which can mimic the dyamic titling behavior of the i3wm.
-
 
 This project is forked from (https://github.com/RobSis/treesome) and still under the development.
 
@@ -22,40 +21,42 @@ Use
 
 3. And finally add the layout `treesome` to your layout table.
 
-```
-    local layouts = {
+    ```lua
+        local layouts = {
+            ...
+            treesome
+        }
+    ```
+
+4. Options:
+    *   if you set the in the rc.lua to let the new created client gain the focus, 
+    for example: 
+    ```lua
+    
         ...
-        treesome
-    }
-```
+            { rule = { },
+              properties = { focus = awful.client.focus.filter,
 
-4.  Options:
- * if you set the in the rc.lua to let the new created client gain the focus, 
-for example: 
-```
-...
-    { rule = { },
-      properties = { focus = awful.client.focus.filter,
-...
-```
-you should set the following option to make sure treesome works correctly
+        ...
+    ```
 
-```
-treesome.focusnew = true 
+    then you should set the following option to make sure treesome works correctly 
 
-```
-Otherwise set 
-```
-treesome.focusnew = false
+        treesome.focusnew = true  
 
-```
- * The following option control the new client apprear on the left or the right side
-of current client.
+    Otherwise set 
 
-```
-treesome.direction = "right" -- or "left"
+        treesome.focusnew = false
 
-```
+    
+    *   The following option controls the new client apprear on the left or the right side
+    of current client: 
+    
+        
+    ```lua
+        treesome.direction = "right" -- or "left"
+    ```
+
 
 5. Restart and you're done.
 
@@ -66,10 +67,10 @@ treesome.direction = "right" -- or "left"
    client. If you want you to force the direction of the split, bind keys to
    `treesome.vertical` and `treesome.horizontal` functions. For example:
 
-```
+    ```lua
     awful.key({ modkey }, "v", treesome.vertical),
     awful.key({ modkey }, "h", treesome.horizontal)
-```
+    ```
 
 
 Screenshots
