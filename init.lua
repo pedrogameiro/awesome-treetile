@@ -1,7 +1,7 @@
 --[[
-    Treesome: Binary Tree-based tiling layout for Awesome 3
+    treetile: Binary Tree-based tiling layout for Awesome 3
 
-    Github:https://github.com/guotsuan/treesome
+    Github:https://github.com/guotsuan/treetile
     Folked from Github: https://github.com/RobSis/treesome
     License: GNU General Public License v2.0
 
@@ -9,7 +9,7 @@
 
     Because the the split of space is depending on the parent node, which is
     current focused client.  Therefore it is necessary to set the correct 
-    focus option, "treesome.focusnew".
+    focus option, "treetile.focusnew".
 
     If the new created client will automatically gain the focus, for exmaple
     in rc.lua with the settings:
@@ -20,14 +20,14 @@
           properties = { focus = awful.client.focus.filter,
          ...
 
-    You need to set "treesome.focusnew = true"
+    You need to set "treetile.focusnew = true"
 
-    Otherwise, set "treesome.focusnew = false"
+    Otherwise, set "treetile.focusnew = false"
 --]]
 
 local awful        = require("awful")
 local beautiful    = require("beautiful")
-local Bintree      = require("treesome/bintree")
+local Bintree      = require("treetile/bintree")
 local os           = os
 local math         = math
 local ipairs       = ipairs
@@ -44,9 +44,9 @@ local capi         = {
     mousegrabber   = mousegrabber
 }
 
-local treesome     = {
+local treetile     = {
     focusnew       = true,
-    name           = "treesome",
+    name           = "treetile",
     direction      = "right" -- the newly created client 
                              -- on the RIGHT or LEFT side of current focus?
 }
@@ -60,10 +60,10 @@ local forceSplit = nil
 local layoutSwitch = false
 local trees = {}
 
-treesome.name = "treesome"
+treetile.name = "treetile"
 
 -- Layout icon
-beautiful.layout_treesome = os.getenv("HOME") .. "/.config/awesome/treesome/layout_icon.png"
+beautiful.layout_treetile = os.getenv("HOME") .. "/.config/awesome/treetile/layout_icon.png"
 
 capi.tag.connect_signal("property::layout", function() layoutSwitch = true end)
 
@@ -146,7 +146,7 @@ function Bintree:update_nodes_geo(parent_geo, geo_table)
 
             if math.abs(parent_geo.height - now_geo.height ) > 0.2 then
 
-                if treesome.direction == 'left' then 
+                if treetile.direction == 'left' then 
                     left_node_geo, right_node_geo = right_node_geo, left_node_geo
                 end
 
@@ -179,7 +179,7 @@ function Bintree:update_nodes_geo(parent_geo, geo_table)
 
             if math.abs(parent_geo.width - now_geo.width) > 0.2 then
 
-                if treesome.direction == 'left' then 
+                if treetile.direction == 'left' then 
                     left_node_geo, right_node_geo = right_node_geo, left_node_geo
                 end
 
@@ -308,17 +308,17 @@ local function setmaster(client)
     end
 end
 
-function treesome.horizontal()
+function treetile.horizontal()
     forceSplit = "horizontal"
     debuginfo('Next split is left right (|) split')
 end
 
-function treesome.vertical()
+function treetile.vertical()
     forceSplit = "vertical"
     debuginfo('Next split is upper bottom (-)split')
 end
 
-local function do_treesome(p)
+local function do_treetile(p)
     local old_clients = nil
     local area = p.workarea
     local n = #p.clients
@@ -343,7 +343,7 @@ local function do_treesome(p)
 
     if trees[tag] ~= nil then
         -- should find a better to handle this 
-        if treesome.focusnew then
+        if treetile.focusnew then
             focus = awful.client.focus.history.get(p.screen,1)
         else
             focus = capi.client.focus
@@ -491,7 +491,7 @@ local function do_treesome(p)
                         end
                     end
 
-                    if treesome.direction == 'right' then 
+                    if treetile.direction == 'right' then 
                         focusNode:addLeft(Bintree.new(focusId))
                         focusNode_geo_t:addLeft(Bintree.new(focusId))
                         focusNode:addRight(Bintree.new(hash(c)))
@@ -538,7 +538,7 @@ local function do_treesome(p)
                         new_c.y = avail_geo.y
 
 
-                        if treesome.direction == "right" then
+                        if treetile.direction == "right" then
                             new_c.x = avail_geo.x + new_c.width
                             old_focus_c.x = avail_geo.x
                         else
@@ -555,7 +555,7 @@ local function do_treesome(p)
                         old_focus_c.x = avail_geo.x
                         new_c.x = avail_geo.x
 
-                        if  treesome.direction == "right" then
+                        if  treetile.direction == "right" then
                             new_c.y = avail_geo.y + new_c.height
                             old_focus_c.y = avail_geo.y
                         else
@@ -610,7 +610,7 @@ local function clip(v, min, max)
 end
 
 
-function treesome.resize_client(inc)  --{{{ resize client
+function treetile.resize_client(inc)  --{{{ resize client
     -- inc: percentage of change: 0.01, 0.99 with +/-
     local focus_c = capi.client.focus
     local g = focus_c:geometry()
@@ -726,14 +726,14 @@ function treesome.resize_client(inc)  --{{{ resize client
 end--}}}
 
 
-function treesome.arrange(p)
-    return do_treesome(p)
+function treetile.arrange(p)
+    return do_treetile(p)
 end
 
 -- no implimented yet, do not use it!
 -- resizing should only happen between the siblings? I guess so
 -- 
-local function mouse_resize_handler(c, corner, x, y)
+local function mouse_resize_handler(c, corner, x, y)--{{{
     local orientation = orientation or "tile"
     local wa = capi.screen[c.screen].workarea
     local tag = tostring(awful.tag.selected(c.screen))
@@ -869,11 +869,11 @@ local function mouse_resize_handler(c, corner, x, y)
                               return prev_coords.x == _mouse.x and prev_coords.y == _mouse.y
                           end, cursor)
 end
+--}}}
 
-
-function treesome.mouse_resize_handler(c, corner, x, y)
+function treetile.mouse_resize_handler(c, corner, x, y)
     mouse_resize_handler(c, corner,x,y)
 end
 
 
-return treesome
+return treetile

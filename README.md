@@ -1,7 +1,7 @@
-Treesome
+treetile
 ========
 
-Treesome is binary tree-based, dynamical tiling layout for Awesome 3.5 and
+treetile is binary tree-based, dynamical tiling layout for Awesome 3.5 and
 latter.  Similarly to tmux or i3wm, if a new client/window is created, 
 the screen area occupied by the previous focused client (progenitor) will be
 split vertically or horizontally and shared equally by the new and the previous
@@ -20,20 +20,20 @@ Installation
 1. Clone repository to your awesome directory
 
     ```
-    git clone http://github.com/guotsuan/treesome.git ~/.config/awesome/treesome
+    git clone http://github.com/guotsuan/treetile.git ~/.config/awesome/treetile
     ```
 
 2. Add this line to your rc.lua below other require calls.
 
     ```lua
-    local treesome = require("treesome")`
+    local treetile = require("treetile")`
     ```
 
-3. And finally add the layout `treesome` to your layout table.
+3. And finally add the layout `treetile` to your layout table.
     ```lua
     local layouts = {
         ...
-        treesome
+        treetile
     }
     ```
 4. ##### Important Option:
@@ -48,13 +48,13 @@ Installation
     ...
     ```
 
-    then you should set the following option to make sure treesome works correctly 
+    then you should set the following option to make sure treetile works correctly 
     ```lua
-    treesome.focusnew = true  
+    treetile.focusnew = true  
     ```
     If no extra settings about focus are added in your rc.lua, please set 
     ```lua
-    treesome.focusnew = false
+    treetile.focusnew = false
     ```
 5. Restart and you're done. 
 
@@ -65,38 +65,38 @@ Configuration
 1. The following option controls the new client apprear on the left or the right side
     of current client: 
     ```lua
-    treesome.direction = "right" -- or "left"
+    treetile.direction = "right" -- or "left"
     ```
 
 2. By default, direction of split is decided based on the dimensions of the last focused
    client. If you want you to force the direction of the split, bind keys to
-   `treesome.vertical` and `treesome.horizontal` functions. For example:
+   `treetile.vertical` and `treetile.horizontal` functions. For example:
 ```lua
-    awful.key({ modkey }, "v", treesome.vertical),
-    awful.key({ modkey }, "h", treesome.horizontal)
+    awful.key({ modkey }, "v", treetile.vertical),
+    awful.key({ modkey }, "h", treetile.horizontal)
 ```
 
 3. Set the keyboad shortcut for resizing the descendant clients
-   ` treesome.resize_client(inc) `. The value of inc can be from 0.01 to 0.99,
+   ` treetile.resize_client(inc) `. The value of inc can be from 0.01 to 0.99,
    negative or postive, for example:
 ```lua
     ...
     awful.key({ modkey, "Shift"   }, "h", function ()
             local c = client.focus
-            if awful.layout.get(c.screen).name ~= "treesome" then
+            if awful.layout.get(c.screen).name ~= "treetile" then
                 awful.client.moveresize(-20,0,0,0) 
             else
-                treesome.resize_client(-0.1) 
+                treetile.resize_client(-0.1) 
                 -- increase or decrease by percentage of current width or height, 
                 -- the value can be from 0.01 to 0.99, negative or postive
             end 
             end),   
     awful.key({ modkey, "Shift"   }, "l", function () 
             local c = client.focus
-            if awful.layout.get(c.screen).name ~= "treesome" then
+            if awful.layout.get(c.screen).name ~= "treetile" then
                 awful.client.moveresize(20,0,0,0) 
             else
-                treesome.resize_client(0.1)
+                treetile.resize_client(0.1)
             end 
             end),
     ...
