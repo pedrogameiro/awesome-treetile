@@ -72,15 +72,15 @@ Configuration
 2. By default, direction of split is decided based on the dimensions of the last focused
    client. If you want you to force the direction of the split, bind keys to
    `treetile.vertical` and `treetile.horizontal` functions. For example:
-```lua
+    ```lua
     awful.key({ modkey }, "v", treetile.vertical),
     awful.key({ modkey }, "h", treetile.horizontal)
-```
+    ```
 
 3. Set the keyboad shortcut for resizing the descendant clients
    ` treetile.resize_client(inc) `. The value of inc can be from 0.01 to 0.99,
    negative or postive, for example:
-```lua
+    ```lua
     ...
     awful.key({ modkey, "Shift"   }, "h", function ()
             local c = client.focus
@@ -101,7 +101,7 @@ Configuration
             end 
             end),
     ...
-```
+    ```
 
 Screenshots
 -----------
