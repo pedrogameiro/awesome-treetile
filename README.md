@@ -1,7 +1,7 @@
-treetile
+Treetile
 ========
 
-treetile is binary tree-based, dynamical tiling layout for Awesome 3.5 and
+Treetile is binary tree-based, dynamical tiling layout for Awesome 3.5 and
 latter.  Similarly to tmux or i3wm, if a new client/window is created, 
 the screen area occupied by the previous focused client (progenitor) will be
 split vertically or horizontally and shared equally by the new and the previous
@@ -12,6 +12,7 @@ respect to each other by the keyboad or mouse, but only in the frame of screen a
 progenitor (which can be improved in the future).  
 
 This project is forked from (https://github.com/RobSis/treesome) and still under the development.
+Comments and feedbacks are welcome.
 
 
 Installation
