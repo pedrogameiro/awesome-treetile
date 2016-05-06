@@ -297,13 +297,13 @@ end
 
 
 local function setslave(client)
-    if not trees[tostring(awful.tag.selected(capi.mouse.screen))] then
+    if not trees[tostring(capi.mouse.screen.selected_tag)] then
         awful.client.setslave(client)
     end
 end
 
 local function setmaster(client)
-    if not trees[tostring(awful.tag.selected(capi.mouse.screen))] then
+    if not trees[tostring(capi.mouse.screen.selected_tag)] then
         awful.client.setmaster(client)
     end
 end
@@ -323,7 +323,7 @@ local function do_treetile(p)
     local area = p.workarea
     local n = #p.clients
 
-    local tag = tostring(p.tag or awful.tag.selected(p.screen))
+    local tag = tostring(p.tag or capi.screen[p.screen].selected_tag)
 
 
     if not trees[tag] then
@@ -350,7 +350,7 @@ local function do_treetile(p)
         end
         
         if focus ~= nil then
-            if awful.client.floating.get(focus) then
+            if focus.floating then
                 focus = nil
             else
                 trees[tag].lastFocus = focus
@@ -615,7 +615,7 @@ function treetile.resize_client(inc)  --{{{ resize client
     local focus_c = capi.client.focus
     local g = focus_c:geometry()
 
-    local tag = tostring(awful.tag.selected(focus_c.screen))
+    local tag = tostring(focus_c.screen.selected_tag)
 
     local parent_node = trees[tag].geo_t:getParent(hash(focus_c))
     local parent_c = trees[tag].t:getParent(hash(focus_c))
@@ -736,7 +736,7 @@ end
 local function mouse_resize_handler(c, corner, x, y)--{{{
     local orientation = orientation or "tile"
     local wa = capi.screen[c.screen].workarea
-    local tag = tostring(awful.tag.selected(c.screen))
+    local tag = tostring(c.screen.selected_tag)
     local mwfact = awful.tag.getmwfact()
     local cursor
     local g = c:geometry()
