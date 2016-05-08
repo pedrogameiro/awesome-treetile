@@ -1,6 +1,8 @@
 Treetile
 ========
 
+*Develop version for awesome git master version due to the changed APIs* 
+
 Treetile is binary tree-based, dynamical tiling layout for Awesome 3.5 and
 latter.  Similarly to tmux or i3wm, if a new client/window is created, 
 the screen area occupied by the previous focused client (progenitor) will be
