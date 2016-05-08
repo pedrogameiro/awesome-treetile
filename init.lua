@@ -338,7 +338,7 @@ local function do_treetile(p)
     end
 
     -- t is tree structure to record all the clients and the way of splitting
-    -- geo_t is the tree structure to record the all of clients and geometry
+    -- geo_t is the tree structure to record the geometry of all nodes/clients
     -- of the parent nodes (the over-all geometry of all siblings together)
 
     if trees[tag] ~= nil then
@@ -584,9 +584,6 @@ local function do_treetile(p)
 
     -- update the geometries of all clients
     if changed ~= 0 or layoutSwitch or update then
-        if update then 
-            debuginfo('switch clients '..tostring(update))
-        end
 
         if n >= 1 then
             for i, c in ipairs(p.clients) do
@@ -619,6 +616,14 @@ function treetile.resize_client(inc)  --{{{ resize client
 
     local parent_node = trees[tag].geo_t:getParent(hash(focus_c))
     local parent_c = trees[tag].t:getParent(hash(focus_c))
+    local sib_node = trees[tag].geo_t:getSibling(hash(focus_c))
+    local sib_node_geo
+    if type(sib_node.data) == "number" then
+        sib_node_geo = trees[tag].geo[sib_node.data]
+    else
+        sib_node_geo = sib_node.data
+    end
+
     local parent_geo
 
     if parent_node then
@@ -630,8 +635,8 @@ function treetile.resize_client(inc)  --{{{ resize client
     local new_geo = {}
     local new_sib = {}
   
-    local min_y = 5.0
-    local min_x = 5.0
+    local min_y = 10.0
+    local min_x = 10.0
 
     new_geo.x = g.x
     new_geo.y = g.y
@@ -643,25 +648,25 @@ function treetile.resize_client(inc)  --{{{ resize client
 
     if parent_c.data =='vertical' then
         if inc < 0 then 
-            fact_y = - clip(g.height * clip(math.abs(inc), 0.01, 0.99), 2, 30)
+            fact_y = - clip(g.height * clip(math.abs(inc), 0.01, 0.99), 5, 30)
         else
-            fact_y = clip(g.height * clip(math.abs(inc), 0.01, 0.99), 2, 30)
+            fact_y = clip(g.height * clip(math.abs(inc), 0.01, 0.99), 5, 30)
         end
 
     end
   
     if parent_c.data =='horizontal' then
         if inc < 0 then 
-            fact_x = - clip(g.width * clip(math.abs(inc), 0.01, 0.99), 2, 30)
+            fact_x = - clip(g.width * clip(math.abs(inc), 0.01, 0.99), 5, 30)
         else
-            fact_x = clip(g.width * clip(math.abs(inc), 0.01, 0.99), 2, 30)
+            fact_x = clip(g.width * clip(math.abs(inc), 0.01, 0.99), 5, 30)
         end
     end
 
 
     if parent_c.data =='vertical' then
-
-        if g.y + g.height + 2.5 > parent_geo.y + parent_geo.height then
+        -- determine which is on the right side
+        if g.y  > sib_node_geo.y  then
 
             new_geo.height = math.min(math.max(g.height - fact_y, min_y), parent_geo.height - min_y)
             new_geo.y= math.min(math.max(g.y + fact_y, min_y), parent_geo.y + parent_geo.height - min_y)
@@ -683,7 +688,8 @@ function treetile.resize_client(inc)  --{{{ resize client
   
     
     if parent_c.data =='horizontal' then
-        if g.x + g.width + 2.5 > parent_geo.x + parent_geo.width  then
+        -- determine which is on the top side
+        if g.x  > sib_node_geo.x  then
 
             new_geo.width = math.min(math.max(g.width - fact_x, min_x), parent_geo.width - min_x)
             new_geo.x = math.min(math.max(g.x + fact_x, min_x), parent_geo.x + parent_geo.width - min_x)
@@ -733,19 +739,15 @@ end
 -- no implimented yet, do not use it!
 -- resizing should only happen between the siblings? I guess so
 -- 
-local function mouse_resize_handler(c, corner, x, y)--{{{
+local function mouse_resize_handler(c, _, _, _)--{{{
     local orientation = orientation or "tile"
     local wa = capi.screen[c.screen].workarea
     local tag = tostring(c.screen.selected_tag)
-    local mwfact = awful.tag.getmwfact()
     local cursor
     local g = c:geometry()
     local offset = 0
     local corner_coords
-    local coordinates_delta = {x=0,y=0}
     
-    local pos_now = capi.mouse.coords()
-
     local parent_c = trees[tag].t:getParent(hash(c))
     
     local parent_node = trees[tag].geo_t:getParent(hash(c))
@@ -753,6 +755,15 @@ local function mouse_resize_handler(c, corner, x, y)--{{{
 
     local new_y = nil
     local new_x = nil
+
+    local sib_node = trees[tag].geo_t:getSibling(hash(c))
+    local sib_node_geo
+    if type(sib_node.data) == "number" then
+        sib_node_geo = trees[tag].geo[sib_node.data]
+    else
+        sib_node_geo = sib_node.data
+    end
+
     if parent_node then
         parent_geo = parent_node.data
     else
@@ -761,24 +772,17 @@ local function mouse_resize_handler(c, corner, x, y)--{{{
     if parent_c then
         if parent_c.data =='vertical' then
             cursor = "sb_v_double_arrow"
-            new_x = pos_now.x
-            if g.y + g.height + 1.5 > parent_geo.y + parent_geo.height then
-                new_y = g.y 
-            else
-                new_y = g.y + g.height
-            end
+            new_y = math.max(g.y, sib_node_geo.y)
+            new_x = g.x + g.width / 2
         end
 
         if parent_c.data =='horizontal' then
             cursor = "sb_h_double_arrow"
-            new_y = pos_now.y
-            if g.x + g.width + 1.5 > parent_geo.x + parent_geo.width then
-                new_x = g.x
-            else
-                new_x = g.x + g.width
-            end
+            new_x = math.max(g.x, sib_node_geo.x)
+            new_y = g.y + g.height / 2
         end
     end
+
 
     corner_coords = { x = new_x, y = new_y }   
     
@@ -795,8 +799,8 @@ local function mouse_resize_handler(c, corner, x, y)--{{{
                                       local new_geo = {}
                                       local new_sib = {}
 
-                                      local min_x = 5.0
-                                      local min_y = 5.0
+                                      local min_x = 15.0
+                                      local min_y = 15.0
 
                                       new_geo.x = g.x
                                       new_geo.y = g.y
@@ -804,9 +808,9 @@ local function mouse_resize_handler(c, corner, x, y)--{{{
                                       new_geo.height = g.height
 
                                       if parent_c.data =='vertical' then
-                                          if g.y + g.height + 2.5 > parent_geo.y + parent_geo.height then
+                                          if g.y > sib_node_geo.y then
                                               new_geo.height = math.min(math.max(g.height - fact_y, min_y), parent_geo.height - min_y)
-                                              new_geo.y= math.min(math.max(_mouse.y, min_y), parent_geo.y + parent_geo.height - min_y)
+                                              new_geo.y= math.min(math.max(_mouse.y, sib_node_geo.y + min_y), parent_geo.y + parent_geo.height - min_y)
 
                                               new_sib.x = parent_geo.x
                                               new_sib.y = parent_geo.y
@@ -825,9 +829,9 @@ local function mouse_resize_handler(c, corner, x, y)--{{{
 
                                       
                                       if parent_c.data =='horizontal' then
-                                          if g.x + g.width + 2.5 > parent_geo.x + parent_geo.width  then
+                                          if g.x  > sib_node_geo.x  then
                                               new_geo.width = math.min(math.max(g.width - fact_x, min_x), parent_geo.width - min_x)
-                                              new_geo.x = math.min(math.max(_mouse.x, min_x), parent_geo.x + parent_geo.width - min_x)
+                                              new_geo.x = math.min(math.max(_mouse.x, sib_node_geo.x + min_x), parent_geo.x + parent_geo.width - min_x)
 
                                               new_sib.y = parent_geo.y 
                                               new_sib.x = parent_geo.x 
