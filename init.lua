@@ -635,8 +635,8 @@ function treetile.resize_client(inc)  --{{{ resize client
     local new_geo = {}
     local new_sib = {}
   
-    local min_y = 10.0
-    local min_x = 10.0
+    local min_y = 20.0
+    local min_x = 20.0
 
     new_geo.x = g.x
     new_geo.y = g.y
@@ -647,19 +647,17 @@ function treetile.resize_client(inc)  --{{{ resize client
     local fact_x
 
     if parent_c.data =='vertical' then
+        fact_y =  math.ceil(clip(g.height * clip(math.abs(inc), 0.01, 0.99), 5, 30))
         if inc < 0 then 
-            fact_y = - clip(g.height * clip(math.abs(inc), 0.01, 0.99), 5, 30)
-        else
-            fact_y = clip(g.height * clip(math.abs(inc), 0.01, 0.99), 5, 30)
+            fact_y = -fact_y
         end
 
     end
   
     if parent_c.data =='horizontal' then
+        fact_x =  math.ceil(clip(g.width * clip(math.abs(inc), 0.01, 0.99), 5, 30))
         if inc < 0 then 
-            fact_x = - clip(g.width * clip(math.abs(inc), 0.01, 0.99), 5, 30)
-        else
-            fact_x = clip(g.width * clip(math.abs(inc), 0.01, 0.99), 5, 30)
+            fact_x = - fact_x
         end
     end
 
@@ -667,9 +665,8 @@ function treetile.resize_client(inc)  --{{{ resize client
     if parent_c.data =='vertical' then
         -- determine which is on the right side
         if g.y  > sib_node_geo.y  then
-
-            new_geo.height = math.min(math.max(g.height - fact_y, min_y), parent_geo.height - min_y)
-            new_geo.y= math.min(math.max(g.y + fact_y, min_y), parent_geo.y + parent_geo.height - min_y)
+            new_geo.height = clip(g.height - fact_y, min_y + 25., parent_geo.height - min_y - 25.)
+            new_geo.y = parent_geo.y + parent_geo.height - new_geo.height
   
             new_sib.x = parent_geo.x
             new_sib.y = parent_geo.y
@@ -677,7 +674,7 @@ function treetile.resize_client(inc)  --{{{ resize client
             new_sib.height = parent_geo.height - new_geo.height
         else
             new_geo.y = g.y 
-            new_geo.height = math.max(math.min(g.height + fact_y, parent_geo.height - min_y), min_y)
+            new_geo.height = clip(g.height + fact_y, min_y, parent_geo.height - min_y)
   
             new_sib.x = new_geo.x
             new_sib.y = new_geo.y + new_geo.height
@@ -691,8 +688,8 @@ function treetile.resize_client(inc)  --{{{ resize client
         -- determine which is on the top side
         if g.x  > sib_node_geo.x  then
 
-            new_geo.width = math.min(math.max(g.width - fact_x, min_x), parent_geo.width - min_x)
-            new_geo.x = math.min(math.max(g.x + fact_x, min_x), parent_geo.x + parent_geo.width - min_x)
+            new_geo.width = clip(g.width - fact_x, min_x, parent_geo.width - min_x)
+            new_geo.x = parent_geo.x + parent_geo.width - new_geo.width
             
             new_sib.y = parent_geo.y 
             new_sib.x = parent_geo.x 
@@ -700,7 +697,7 @@ function treetile.resize_client(inc)  --{{{ resize client
             new_sib.width = parent_geo.width - new_geo.width
         else
             new_geo.x = g.x 
-            new_geo.width = math.max(math.min(g.width + fact_x, parent_geo.width - min_x), min_x)
+            new_geo.width = clip(g.width + fact_x, min_x, parent_geo.width - min_x)
   
             new_sib.y = parent_geo.y 
             new_sib.x = parent_geo.x + new_geo.width
