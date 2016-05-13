@@ -1,7 +1,7 @@
 Treetile
 ========
 
-*Develop version for awesome git master version due to the changed APIs* 
+*Codes work with git version of awesome and sould work with stable version too (e.g. 3.5.9 currently).  Let me know if they fail.* 
 
 Treetile is binary tree-based, dynamical tiling layout for Awesome 3.5 and
 latter.  Similarly to tmux or i3wm, if a new client/window is created, 
