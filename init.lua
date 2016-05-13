@@ -295,19 +295,6 @@ function Bintree:filterClients(node, clients)
     end
 end
 
-
-local function setslave(client)
-    if not trees[tostring(capi.mouse.screen.selected_tag)] then
-        awful.client.setslave(client)
-    end
-end
-
-local function setmaster(client)
-    if not trees[tostring(capi.mouse.screen.selected_tag)] then
-        awful.client.setmaster(client)
-    end
-end
-
 function treetile.horizontal()
     forceSplit = "horizontal"
     debuginfo('Next split is left right (|) split')
@@ -323,7 +310,8 @@ local function do_treetile(p)
     local area = p.workarea
     local n = #p.clients
 
-    local tag = tostring(p.tag or capi.screen[p.screen].selected_tag)
+    local tag = tostring(p.tag or capi.screen[p.screen].selected_tag 
+                        or awful.tag.selected(capi.mouse.screen))
 
 
     if not trees[tag] then
@@ -350,7 +338,7 @@ local function do_treetile(p)
         end
         
         if focus ~= nil then
-            if focus.floating then
+            if focus.floating or awful.client.floating.get(focus) then
                 focus = nil
             else
                 trees[tag].lastFocus = focus
@@ -612,7 +600,7 @@ function treetile.resize_client(inc)  --{{{ resize client
     local focus_c = capi.client.focus
     local g = focus_c:geometry()
 
-    local tag = tostring(focus_c.screen.selected_tag)
+    local tag = tostring(focus_c.screen.selected_tag or awful.tag.selected(focus_c.screen))
 
     local parent_node = trees[tag].geo_t:getParent(hash(focus_c))
     local parent_c = trees[tag].t:getParent(hash(focus_c))
@@ -739,7 +727,7 @@ end
 local function mouse_resize_handler(c, _, _, _)--{{{
     local orientation = orientation or "tile"
     local wa = capi.screen[c.screen].workarea
-    local tag = tostring(c.screen.selected_tag)
+    local tag = tostring(c.screen.selected_tag or awful.tag.selected(c.screen))
     local cursor
     local g = c:geometry()
     local offset = 0
@@ -806,8 +794,8 @@ local function mouse_resize_handler(c, _, _, _)--{{{
 
                                       if parent_c.data =='vertical' then
                                           if g.y > sib_node_geo.y then
-                                              new_geo.height = math.min(math.max(g.height - fact_y, min_y), parent_geo.height - min_y)
-                                              new_geo.y= math.min(math.max(_mouse.y, sib_node_geo.y + min_y), parent_geo.y + parent_geo.height - min_y)
+                                              new_geo.height = clip(g.height - fact_y, min_y, parent_geo.height - min_y)
+                                              new_geo.y= clip(_mouse.y, sib_node_geo.y + min_y, parent_geo.y + parent_geo.height - min_y)
 
                                               new_sib.x = parent_geo.x
                                               new_sib.y = parent_geo.y
@@ -815,7 +803,7 @@ local function mouse_resize_handler(c, _, _, _)--{{{
                                               new_sib.height = parent_geo.height - new_geo.height
                                           else
                                               new_geo.y = g.y 
-                                              new_geo.height = math.max(math.min(g.height + fact_y, parent_geo.height - min_y), min_y)
+                                              new_geo.height = clip(g.height + fact_y,  min_y, parent_geo.height - min_y)
 
                                               new_sib.x = new_geo.x
                                               new_sib.y = new_geo.y + new_geo.height
@@ -827,8 +815,8 @@ local function mouse_resize_handler(c, _, _, _)--{{{
                                       
                                       if parent_c.data =='horizontal' then
                                           if g.x  > sib_node_geo.x  then
-                                              new_geo.width = math.min(math.max(g.width - fact_x, min_x), parent_geo.width - min_x)
-                                              new_geo.x = math.min(math.max(_mouse.x, sib_node_geo.x + min_x), parent_geo.x + parent_geo.width - min_x)
+                                              new_geo.width = clip(g.width - fact_x, min_x, parent_geo.width - min_x)
+                                              new_geo.x = clip(_mouse.x, sib_node_geo.x + min_x, parent_geo.x + parent_geo.width - min_x)
 
                                               new_sib.y = parent_geo.y 
                                               new_sib.x = parent_geo.x 
@@ -836,7 +824,7 @@ local function mouse_resize_handler(c, _, _, _)--{{{
                                               new_sib.width = parent_geo.width - new_geo.width
                                           else
                                               new_geo.x = g.x 
-                                              new_geo.width = math.max(math.min(g.width + fact_x, parent_geo.width - min_x), min_x)
+                                              new_geo.width = clip(g.width + fact_x, min_x, parent_geo.width - min_x)
 
                                               new_sib.y = parent_geo.y 
                                               new_sib.x = parent_geo.x + new_geo.width
