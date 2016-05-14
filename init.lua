@@ -43,6 +43,7 @@ local capi         = {
     screen         = screen,
     mousegrabber   = mousegrabber
 }
+local debug   = require("gears.debug")
 
 local treetile     = {
     focusnew       = true,
@@ -101,7 +102,7 @@ function Bintree:update_nodes_geo(parent_geo, geo_table)
         if type(parent_geo) == "table" then
             geo_table[self.data] = awful.util.table.clone(parent_geo)
         else
-            print ('geometry table error errors, init.lua: line 70')
+            debug.print_error ('geometry table error errors')
         end
 
         return
@@ -309,6 +310,7 @@ local function do_treetile(p)
     local old_clients = nil
     local area = p.workarea
     local n = #p.clients
+    local gs = p.geometries
 
     local tag = tostring(p.tag or capi.screen[p.screen].selected_tag 
                         or awful.tag.selected(capi.mouse.screen))
@@ -338,7 +340,14 @@ local function do_treetile(p)
         end
         
         if focus ~= nil then
-            if focus.floating or awful.client.floating.get(focus) then
+            local isfloat
+            if type(focus.floating) == 'boolean' then
+                isfloat = focus.floating
+            else
+                isfloat = awful.client.floating.get(focus) 
+            end
+
+            if isfloat then
                 focus = nil
             else
                 trees[tag].lastFocus = focus
@@ -575,13 +584,16 @@ local function do_treetile(p)
 
         if n >= 1 then
             for i, c in ipairs(p.clients) do
+                local hints = {}
 
                 local geo = nil
                 geo = trees[tag].geo[hash(c)]
                 if type(geo) == 'table' then 
+                    --gs[c] = geo
                     c:geometry(geo)
+                    --hints.width, hints.height = c:apply_size_hints(geo.width, geo.height)
                 else
-                    print ("wrong geometry in init.lua: line 580")
+                    debug.print_error("wrong geometry in treetile/init.lua")
                 end
             end
         end
@@ -710,7 +722,7 @@ function treetile.resize_client(inc)  --{{{ resize client
         if type(geo) == 'table' then 
             c:geometry(geo)
         else
-            print ("wrong geometry in init.lua: line 695")
+            debug.print_error("wrong geometry in init.lua")
         end
    end
 
@@ -849,7 +861,7 @@ local function mouse_resize_handler(c, _, _, _)--{{{
                                             if type(geo) == 'table' then 
                                                 c:geometry(geo)
                                             else
-                                                print ("wrong geometry in init.lua: line 580")
+                                                debug.print_error ("wrong geometry in init.lua")
                                             end
                                        end
                                       return true
