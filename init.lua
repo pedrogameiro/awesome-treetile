@@ -500,11 +500,11 @@ local function do_treetile(p)
                         focusNode_geo_t:addLeft(Bintree.new(hash(c)))
                     end
 
-                    -- Useless gap. not support yet, set to 0! 
-                    local useless_gap = tonumber(beautiful.useless_gap_width)
-                    useless_gap = 0
+                    local useless_gap = tonumber(beautiful.useless_gap)
                     if useless_gap == nil then
                         useless_gap = 0
+                    else
+                        useless_gap = useless_gap * 2.0
                     end
 
                     local avail_geo =nil
@@ -518,8 +518,7 @@ local function do_treetile(p)
                     else
                         avail_geo = area
                     end
-
-
+        
                     local new_c = {}
                     local old_focus_c = {}
 
@@ -528,19 +527,18 @@ local function do_treetile(p)
 
                     if focusNode.data == "horizontal" then
                         new_c.width = math.floor((avail_geo.width - useless_gap) / 2.0 )
-                        new_c.height =avail_geo.height
+                        new_c.height = avail_geo.height
                         old_focus_c.width = math.floor((avail_geo.width - useless_gap) / 2.0 )
-                        old_focus_c.height =avail_geo.height
+                        old_focus_c.height = avail_geo.height
                         old_focus_c.y = avail_geo.y
                         new_c.y = avail_geo.y
 
-
                         if treetile.direction == "right" then
-                            new_c.x = avail_geo.x + new_c.width
+                            new_c.x = avail_geo.x + new_c.width + useless_gap
                             old_focus_c.x = avail_geo.x
                         else
                             new_c.x = avail_geo.x
-                            old_focus_c.x = avail_geo.x + new_c.width
+                            old_focus_c.x = avail_geo.x + new_c.width - useless_gap
                         end
 
 
@@ -553,11 +551,11 @@ local function do_treetile(p)
                         new_c.x = avail_geo.x
 
                         if  treetile.direction == "right" then
-                            new_c.y = avail_geo.y + new_c.height
+                            new_c.y = avail_geo.y + new_c.height + useless_gap
                             old_focus_c.y = avail_geo.y
                         else
                             new_c.y = avail_geo.y 
-                            old_focus_c.y =avail_geo.y + new_c.height
+                            old_focus_c.y =avail_geo.y + new_c.height - useless_gap
                         end
 
                     end
@@ -638,6 +636,13 @@ function treetile.resize_client(inc)  --{{{ resize client
     local min_y = 20.0
     local min_x = 20.0
 
+    local useless_gap = tonumber(beautiful.useless_gap)
+    if useless_gap == nil then
+        useless_gap = 0
+    else
+        useless_gap = useless_gap * 2.0
+    end
+
     new_geo.x = g.x
     new_geo.y = g.y
     new_geo.width = g.width
@@ -665,21 +670,21 @@ function treetile.resize_client(inc)  --{{{ resize client
     if parent_c.data =='vertical' then
         -- determine which is on the right side
         if g.y  > sib_node_geo.y  then
-            new_geo.height = clip(g.height - fact_y, min_y + 25., parent_geo.height - min_y - 25.)
+            new_geo.height = clip(g.height - fact_y, min_y, parent_geo.height - min_y)
             new_geo.y = parent_geo.y + parent_geo.height - new_geo.height
   
             new_sib.x = parent_geo.x
             new_sib.y = parent_geo.y
             new_sib.width = parent_geo.width
-            new_sib.height = parent_geo.height - new_geo.height
+            new_sib.height = parent_geo.height - new_geo.height - useless_gap
         else
-            new_geo.y = g.y 
+            new_geo.y = g.y
             new_geo.height = clip(g.height + fact_y, min_y, parent_geo.height - min_y)
   
             new_sib.x = new_geo.x
-            new_sib.y = new_geo.y + new_geo.height
+            new_sib.y = new_geo.y + new_geo.height + useless_gap
             new_sib.width = parent_geo.width
-            new_sib.height = parent_geo.height - new_geo.height
+            new_sib.height = parent_geo.height - new_geo.height - useless_gap
         end
     end
   
@@ -694,15 +699,15 @@ function treetile.resize_client(inc)  --{{{ resize client
             new_sib.y = parent_geo.y 
             new_sib.x = parent_geo.x 
             new_sib.height = parent_geo.height 
-            new_sib.width = parent_geo.width - new_geo.width
+            new_sib.width = parent_geo.width - new_geo.width - useless_gap
         else
-            new_geo.x = g.x 
+            new_geo.x = g.x
             new_geo.width = clip(g.width + fact_x, min_x, parent_geo.width - min_x)
   
             new_sib.y = parent_geo.y 
-            new_sib.x = parent_geo.x + new_geo.width
+            new_sib.x = parent_geo.x + new_geo.width + useless_gap
             new_sib.height = parent_geo.height 
-            new_sib.width = parent_geo.width - new_geo.width
+            new_sib.width = parent_geo.width - new_geo.width - useless_gap
         end
     end
   
