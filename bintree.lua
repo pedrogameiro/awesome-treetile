@@ -1,33 +1,33 @@
 -- bintree.lua
 -- Class representing the binary tree
-local Bintree = {}
-Bintree.__index = Bintree
+local bintree = {}
+bintree.__index = bintree
 
 
-function Bintree.new(data, left, right)
+function bintree.new(data, left, right)
    local node = {
        data = data,
        left = left,
        right = right,
    }
-   return setmetatable(node,Bintree)
+   return setmetatable(node, bintree)
 end
 
-function Bintree:add_left(child)
+function bintree:add_left(child)
     if self ~= nil then
         self.left = child
         return self.left
     end
 end
 
-function Bintree:add_right(child)
+function bintree:add_right(child)
     if self ~= nil then
         self.right = child
         return self.right
     end
 end
 
-function Bintree:find(data)
+function bintree:find(data)
     if data == self.data then
         return self
     end
@@ -45,7 +45,7 @@ function Bintree:find(data)
 end
 
 -- remove leaf and replace parent by sibling
-function Bintree:remove_leaf(data)
+function bintree:remove_leaf(data)
     local output = nil
     if self.left ~= nil then
         if self.left.data == data then
@@ -80,7 +80,7 @@ function Bintree:remove_leaf(data)
     end
 end
 
-function Bintree:get_sibling(data)
+function bintree:get_sibling(data)
     if data == self.data then
         return nil
     end
@@ -103,7 +103,7 @@ function Bintree:get_sibling(data)
     return output or nil
 end
 
-function Bintree:get_parent(data)
+function bintree:get_parent(data)
     local output = nil
     if type(self.left) == "table" then
         if self.left.data == data then
@@ -126,7 +126,7 @@ function Bintree:get_parent(data)
 
 end
 
-function Bintree:swap_leaves(data1, data2)
+function bintree:swap_leaves(data1, data2)
     local leaf1 = self:find(data1)
     local leaf2 = self:find(data2)
 
@@ -138,18 +138,18 @@ function Bintree:swap_leaves(data1, data2)
     end
 end
 
-function Bintree.show(node, level)
+function bintree.show(node, level)
     if level == nil then
         level = 0
     end
     if node ~= nil then
         print(string.rep(" ", level) .. "Node[" .. node.data .. "]")
-        Bintree.show(node.left, level + 1)
-        Bintree.show(node.right, level + 1)
+        bintree.show(node.left, level + 1)
+        bintree.show(node.right, level + 1)
     end
 end
 
-function Bintree.show2(node, level, d)
+function bintree.show2(node, level, d)
     if level == nil then
         level = 0
     end
@@ -162,9 +162,9 @@ function Bintree.show2(node, level, d)
         else
             print(string.rep(" ", level) .. d.."Node[" .. tostring(node.data.x)..' '..tostring(node.data.y)..' '..tostring(node.data.height)..' '..tostring(node.data.width) .. "]")
         end
-        Bintree.show2(node.left, level + 1, 'L_')
-        Bintree.show2(node.right, level + 1, 'R_')
+        bintree.show2(node.left, level + 1, 'L_')
+        bintree.show2(node.right, level + 1, 'R_')
     end
 end
 
-return Bintree
+return bintree
