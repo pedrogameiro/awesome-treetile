@@ -13,14 +13,14 @@ function Bintree.new(data, left, right)
    return setmetatable(node,Bintree)
 end
 
-function Bintree:addLeft(child)
+function Bintree:add_left(child)
     if self ~= nil then
         self.left = child
         return self.left
     end
 end
 
-function Bintree:addRight(child)
+function Bintree:add_right(child)
     if self ~= nil then
         self.right = child
         return self.right
@@ -45,42 +45,42 @@ function Bintree:find(data)
 end
 
 -- remove leaf and replace parent by sibling
-function Bintree:removeLeaf(data)
+function Bintree:remove_leaf(data)
     local output = nil
     if self.left ~= nil then
         if self.left.data == data then
-            local newSelf = {
+            local new_self = {
                 data = self.right.data,
                 left = self.right.left,
                 right = self.right.right
             }
-            self.data = newSelf.data
-            self.left = newSelf.left
-            self.right = newSelf.right
+            self.data = new_self.data
+            self.left = new_self.left
+            self.right = new_self.right
             return true
         else
-            output = self.left:removeLeaf(data) or nil
+            output = self.left:remove_leaf(data) or nil
         end
     end
 
     if self.right ~= nil then
         if self.right.data == data then
-            local newSelf = {
+            local new_self = {
                 data = self.left.data,
                 left = self.left.left,
                 right = self.left.right
             }
-            self.data = newSelf.data
-            self.left = newSelf.left
-            self.right = newSelf.right
+            self.data = new_self.data
+            self.left = new_self.left
+            self.right = new_self.right
             return true
         else
-            return output or self.right:removeLeaf(data) or nil
+            return output or self.right:remove_leaf(data) or nil
         end
     end
 end
 
-function Bintree:getSibling(data)
+function Bintree:get_sibling(data)
     if data == self.data then
         return nil
     end
@@ -90,27 +90,27 @@ function Bintree:getSibling(data)
         if self.left.data == data then
             return self.right
         end
-        output = self.left:getSibling(data) or nil
+        output = self.left:get_sibling(data) or nil
     end
 
     if type(self.right) == "table" then
         if self.right.data == data then
             return self.left
         end
-        output = output or self.right:getSibling(data) or nil
+        output = output or self.right:get_sibling(data) or nil
     end
 
     return output or nil
 end
 
-function Bintree:getParent(data)
+function Bintree:get_parent(data)
     local output = nil
     if type(self.left) == "table" then
         if self.left.data == data then
             --print('L branch found')
             return self
         end
-        output = self.left:getParent(data) or nil
+        output = self.left:get_parent(data) or nil
     end
 
 
@@ -119,14 +119,14 @@ function Bintree:getParent(data)
             --print('R branch found')
             return self
         end
-        output = output or self.right:getParent(data) or nil
+        output = output or self.right:get_parent(data) or nil
     end
 
     return output or nil
 
 end
 
-function Bintree:swapLeaves(data1, data2)
+function Bintree:swap_leaves(data1, data2)
     local leaf1 = self:find(data1)
     local leaf2 = self:find(data2)
 
