@@ -69,15 +69,13 @@ beautiful.layout_treetile = os.getenv("HOME") .. "/.config/awesome/treetile/layo
 
 capi.tag.connect_signal("property::layout", function() layout_switch = true end)
 
-local function debuginfo(message)
+local function debug_info(message)
     if type(message) == "table" then
         for k,v in pairs(message) do
-            naughty.notify({ text = "key: "..k.." value: "..tostring(v), timeout = 10 })
+            naughty.notify { text = table.concat {"key: ",k," value: ",tostring(v)} }
         end
-    elseif type(message) == 'string' then
-        nid = naughty.notify({ text = message, timeout = 10 })
     else
-        nid = naughty.notify({ text = tostring(message), timeout = 10 })
+        naughty.notify { text = tostring(message) }
     end
 end
 
@@ -299,12 +297,12 @@ end
 
 function treetile.horizontal()
     force_split = "horizontal"
-    debuginfo('Next split is left right (|) split')
+    debug_info('Next split is left right (|) split')
 end
 
 function treetile.vertical()
     force_split = "vertical"
-    debuginfo('Next split is upper bottom (-)split')
+    debug_info('Next split is upper bottom (-)split')
 end
 
 local function do_treetile(p)
