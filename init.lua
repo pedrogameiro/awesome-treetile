@@ -274,25 +274,6 @@ function bintree:trace(data, path, dir)
     end
 end
 
--- remove all leaves with data that don't appear in given table
--- and only remove clients
-function bintree:filter_clients(node, clients)
-    if node then
-        if node.data and not table_find(clients, node.data) and
-            type(node.data) == 'number' then
-            self:remove_leaf(node.data)
-        end
-
-        if node.left then
-            self:filter_clients(node.left, clients)
-        end
-
-        if node.right then
-            self:filter_clients(node.right, clients)
-        end
-    end
-end
-
 function bintree.show_detailed(node, level, child)
     if not level then level = 0 end
     if not child then child = '' end
@@ -542,8 +523,12 @@ function treetile.arrange(p)
                 end
             end
 
-            trees[tag].geo_t:filter_clients(trees[tag].geo_t, tokens)
-            trees[tag].t:filter_clients(trees[tag].t, tokens)
+            local function filter(node)
+                return type(node.data) == "number" and not table_find(tokens, node.data)
+            end
+
+            trees[tag].geo_t:remove_if(filter)
+            trees[tag].t:remove_if(filter)
         else
             trees[tag] = nil
         end

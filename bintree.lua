@@ -53,46 +53,61 @@ function bintree:find(data)
 end
 
 -- remove leaf and replace parent by sibling
-function bintree:remove_leaf(data)
-    if data == self.data then
-        self.data = nil
-        self.left = nil
-        self.right = nil
+function bintree:remove(data)
+    if self.left and self.left.data == data then
+        local new_self = {
+            data = self.right.data,
+            left = self.right.left,
+            right = self.right.right
+        }
+        self.data = new_self.data
+        self.left = new_self.left
+        self.right = new_self.right
+        return true
+    end
+
+    if self.right and self.right.data == data then
+        local new_self = {
+            data = self.left.data,
+            left = self.left.left,
+            right = self.left.right
+        }
+        self.data = new_self.data
+        self.left = new_self.left
+        self.right = new_self.right
         return true
     end
 
     if self.left then
-        if self.left.data == data then
-            local new_self = {
-                data = self.right.data,
-                left = self.right.left,
-                right = self.right.right
-            }
-            self.data = new_self.data
-            self.left = new_self.left
-            self.right = new_self.right
-            return true
-        else
-            local output = self.left:remove_leaf(data)
-            if output then return output end
-        end
+        local output = self.left:remove(data)
+        if output then return output end
     end
 
     if self.right then
-        if self.right.data == data then
-            local new_self = {
-                data = self.left.data,
-                left = self.left.left,
-                right = self.left.right
-            }
-            self.data = new_self.data
-            self.left = new_self.left
-            self.right = new_self.right
-            return true
-        else
-            local output = self.right:remove_leaf(data)
-            if output then return output end
-        end
+        local output = self.right:remove(data)
+        if output then return output end
+    end
+end
+
+function bintree:remove_if(filter)
+    if self.left and filter(self.left) then
+        self:remove(self.left.data)
+        return true
+    end
+
+    if self.right and filter(self.right) then
+        self:remove(self.right.data)
+        return true
+    end
+
+    if self.left then
+        local output = self.left:remove_if(filter)
+        if output then return output end
+    end
+
+    if self.right then
+        local output = self.right:remove_if(filter)
+        if output then return output end
     end
 end
 
