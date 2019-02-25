@@ -284,12 +284,12 @@ end
 
 function treetile.horizontal()
     force_split = "horizontal"
-    debug_info('Next split is left right (|) split')
+    debug_info('Next split is horizontal.')
 end
 
 function treetile.vertical()
     force_split = "vertical"
-    debug_info('Next split is upper bottom (-)split')
+    debug_info('Next split is vertical.')
 end
 
 local function do_treetile(p)
