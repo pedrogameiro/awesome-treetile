@@ -151,7 +151,7 @@ function bintree.show(node, level)
     if not node then return end
 
     print(table.concat {
-        string.rep(" ", level), "Node[", node.data, "]",
+        string.rep(" ", level), "Node[", tostring(node.data), "]",
     })
 
     bintree.show(node.left, level + 1)
