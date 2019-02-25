@@ -158,30 +158,4 @@ function bintree.show(node, level)
     bintree.show(node.right, level + 1)
 end
 
-function bintree.show2(node, level, child)
-    if not level then level = 0 end
-    if not child then child = '' end
-    if not node then return end
-
-    if type(node.data) == "number" then
-        print(table.concat {
-            string.rep(" ", level),
-            child, "Node[",
-            node.data, "]",
-        })
-    else
-        print(table.concat {
-            string.rep(" ", level),
-            child, "Node[",
-            "x:", tostring(node.data.x), " ",
-            "y:", tostring(node.data.y), " ",
-            "w:", tostring(node.data.width), " ",
-            "h:", tostring(node.data.height), "]",
-        })
-    end
-
-    bintree.show2(node.left, level + 1, "L_")
-    bintree.show2(node.right, level + 1, "R_")
-end
-
 return bintree
