@@ -247,33 +247,6 @@ function bintree:update_nodes_geo(parent_geo, geo_table)
     end
 end
 
--- get ancestors of node with given data
-function bintree:trace(data, path, dir)
-    if path then
-        table.insert(path, {split=self.data, direction=dir})
-    end
-
-    if data == self.data then
-        return path
-    end
-
-    if type(self.left) == "table" then
-        if (self.left:trace(data, path, "left")) then
-            return true
-        end
-    end
-
-    if type(self.right) == "table" then
-        if (self.right:trace(data, path, "right")) then
-            return true
-        end
-    end
-
-    if path then
-        table.remove(path)
-    end
-end
-
 function bintree.show_detailed(node, level, child)
     if not level then level = 0 end
     if not child then child = '' end
