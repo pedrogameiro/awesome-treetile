@@ -95,11 +95,7 @@ end
 
 -- get an unique identifier of a window
 local function hash(client)
-    if client then
-        return client.window
-    else
-        return nil
-    end
+    return client and client.window
 end
 
 local function table_diff(table1, table2)
@@ -108,9 +104,6 @@ local function table_diff(table1, table2)
         if table2[i] ~= v then
             table.insert(diff_list, v)
         end
-    end
-    if #diff_list == 0 then
-        diff_list = nil
     end
     return diff_list
 end
@@ -460,7 +453,7 @@ function treetile.arrange(p)
     else
         if trees[tag].clients then
             local diff = table_diff(p.clients, trees[tag].clients)
-            if diff and #diff == 2 then
+            if #diff == 2 then
                 trees[tag].t:swap_leaves(hash(diff[1]), hash(diff[2]))
                 trees[tag].geo_t:swap_leaves(hash(diff[1]), hash(diff[2]))
                 trees[tag].geo[hash(diff[1])], trees[tag].geo[hash(diff[2])]
