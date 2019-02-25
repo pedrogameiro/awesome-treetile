@@ -474,7 +474,7 @@ function treetile.arrange(p)
             end
 
             for clid, _ in pairs(trees[tag].geo) do
-                if gtable.hasitem(tokens, clid) == nil then
+                if not gtable.hasitem(tokens, clid) then
                     -- update the size of clients left, fill the empty space left by the killed client
 
                     local sibling = trees[tag].geo_t:get_sibling(clid)
@@ -507,7 +507,7 @@ function treetile.arrange(p)
     if changed > 0 then
         for _, c in ipairs(p.clients) do
             if not trees[tag].t or not trees[tag].t:find(hash(c)) then
-                if focus == nil then
+                if not focus then
                     focus = trees[tag].last_focus
                 end
 
@@ -550,11 +550,11 @@ function treetile.arrange(p)
 
                 -- {{{ if focus_node exists
                 if focus_node then
-                    if focus_geometry == nil then
+                    if not focus_geometry then
                         local splits = {"horizontal", "vertical"}
                         focus_node.data = splits[next_split + 1]
                     else
-                        if (force_split ~= nil) then
+                        if force_split then
                             focus_node.data = force_split
                         else
                             if (focus_geometry.width <= focus_geometry.height) then
@@ -578,7 +578,7 @@ function treetile.arrange(p)
                     end
 
                     local useless_gap = tag.gap or tonumber(beautiful.useless_gap)
-                    if useless_gap == nil then
+                    if not useless_gap then
                         useless_gap = 0
                     else
                         useless_gap = useless_gap * 2.0
@@ -778,7 +778,7 @@ local function mouse_resize_handler(c, _, _, _)
 
                                       trees[tag].geo[hash(c)] = new_geo
 
-                                      if sib_node ~= nil then
+                                      if sib_node then
                                           sib_node:update_nodes_geo(new_sib, trees[tag].geo)
                                       end
 
