@@ -1,53 +1,67 @@
--- bintree.lua
--- Class representing the binary tree
+
+--[[
+
+     Licensed under GNU General Public License v2
+      * (c) 2019, Alphonse Mariyagnanaseelan
+
+
+
+    Class representing a binary tree.
+
+--]]
+
+local table        = table
+local tostring     = tostring
+local type         = type
+
 local bintree = {}
 bintree.__index = bintree
 
-
 function bintree.new(data, left, right)
-   local node = {
-       data = data,
-       left = left,
-       right = right,
-   }
-   return setmetatable(node, bintree)
+    return setmetatable({
+        data = data,
+        left = left,
+        right = right,
+    }, bintree)
 end
 
-function bintree:add_left(child)
-    if self ~= nil then
-        self.left = child
-        return self.left
-    end
+function bintree:set_new_left(...)
+    self.left = bintree.new(...)
+    return self.left
 end
 
-function bintree:add_right(child)
-    if self ~= nil then
-        self.right = child
-        return self.right
-    end
+function bintree:set_new_right(...)
+    self.right = bintree.new(...)
+    return self.right
+end
+
+function bintree:set_left(node)
+    self.left = node
+    return self.left
+end
+
+function bintree:set_right(node)
+    self.right = node
+    return self.right
 end
 
 function bintree:find(data)
-    if data == self.data then
-        return self
-    end
+    if data == self.data then return self end
 
-    local output = nil
-    if type(self.left) == "table" then
-        output = self.left:find(data)
-    end
-
-    if type(self.right) == "table" then
-        output = output or self.right:find(data) or nil
-    end
-
-    return output
+    return self.left and self.left:find(data)
+        or self.right and self.right:find(data)
 end
 
 -- remove leaf and replace parent by sibling
 function bintree:remove_leaf(data)
-    local output = nil
-    if self.left ~= nil then
+    if data == self.data then
+        self.data = nil
+        self.left = nil
+        self.right = nil
+        return true
+    end
+
+    if self.left then
         if self.left.data == data then
             local new_self = {
                 data = self.right.data,
@@ -59,11 +73,12 @@ function bintree:remove_leaf(data)
             self.right = new_self.right
             return true
         else
-            output = self.left:remove_leaf(data) or nil
+            local output = self.left:remove_leaf(data)
+            if output then return output end
         end
     end
 
-    if self.right ~= nil then
+    if self.right then
         if self.right.data == data then
             local new_self = {
                 data = self.left.data,
@@ -75,96 +90,98 @@ function bintree:remove_leaf(data)
             self.right = new_self.right
             return true
         else
-            return output or self.right:remove_leaf(data) or nil
+            local output = self.right:remove_leaf(data)
+            if output then return output end
         end
     end
 end
 
 function bintree:get_sibling(data)
-    if data == self.data then
-        return nil
-    end
+    if data == self.data then return nil end
 
-    local output = nil
-    if type(self.left) == "table" then
+    if self.left then
         if self.left.data == data then
             return self.right
         end
-        output = self.left:get_sibling(data) or nil
+
+        local output = self.left:get_sibling(data)
+        if output then return output end
     end
 
-    if type(self.right) == "table" then
+    if self.right then
         if self.right.data == data then
             return self.left
         end
-        output = output or self.right:get_sibling(data) or nil
-    end
 
-    return output or nil
+        local output = self.right:get_sibling(data)
+        if output then return output end
+    end
 end
 
 function bintree:get_parent(data)
-    local output = nil
-    if type(self.left) == "table" then
+    if self.left then
         if self.left.data == data then
-            --print('L branch found')
             return self
         end
-        output = self.left:get_parent(data) or nil
+
+        local output = self.left:get_parent(data)
+        if output then return output end
     end
 
-
-    if type(self.right) == "table" then
+    if self.right then
         if self.right.data == data then
-            --print('R branch found')
             return self
         end
-        output = output or self.right:get_parent(data) or nil
+
+        local output = self.right:get_parent(data)
+        if output then return output end
     end
-
-    return output or nil
-
 end
 
 function bintree:swap_leaves(data1, data2)
     local leaf1 = self:find(data1)
     local leaf2 = self:find(data2)
 
-    local temp = nil
-    if leaf1 and leaf2 then
-       temp = leaf1.data
-       leaf1.data = leaf2.data
-       leaf2.data = temp
-    end
+    if not (leaf1 and leaf2) then return end
+    leaf1.data, leaf2.data = leaf2.data, leaf1.data
 end
 
 function bintree.show(node, level)
-    if level == nil then
-        level = 0
-    end
-    if node ~= nil then
-        print(string.rep(" ", level) .. "Node[" .. node.data .. "]")
-        bintree.show(node.left, level + 1)
-        bintree.show(node.right, level + 1)
-    end
+    if not level then level = 0 end
+    if not node then return end
+
+    print(table.concat {
+        string.rep(" ", level), "Node[", node.data, "]",
+    })
+
+    bintree.show(node.left, level + 1)
+    bintree.show(node.right, level + 1)
 end
 
-function bintree.show2(node, level, d)
-    if level == nil then
-        level = 0
+function bintree.show2(node, level, child)
+    if not level then level = 0 end
+    if not child then child = '' end
+    if not node then return end
+
+    if type(node.data) == "number" then
+        print(table.concat {
+            string.rep(" ", level),
+            child, "Node[",
+            node.data, "]",
+        })
+    else
+        print(table.concat {
+            string.rep(" ", level),
+            child, "Node[",
+            "x:", tostring(node.data.x), " ",
+            "y:", tostring(node.data.y), " ",
+            "w:", tostring(node.data.width), " ",
+            "h:", tostring(node.data.height), "]",
+        })
     end
-    if d == nil then
-        d=''
-    end
-    if node ~= nil then
-        if type(node.data) == 'number' then
-            print(string.rep(" ", level) .. d.."Node[" .. node.data .. "]")
-        else
-            print(string.rep(" ", level) .. d.."Node[" .. tostring(node.data.x)..' '..tostring(node.data.y)..' '..tostring(node.data.height)..' '..tostring(node.data.width) .. "]")
-        end
-        bintree.show2(node.left, level + 1, 'L_')
-        bintree.show2(node.right, level + 1, 'R_')
-    end
+
+    bintree.show2(node.left, level + 1, "L_")
+    bintree.show2(node.right, level + 1, "R_")
 end
 
 return bintree

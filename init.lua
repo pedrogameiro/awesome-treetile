@@ -1,12 +1,16 @@
 
 --[[
 
+     Licensed under GNU General Public License v2
+      * (c) 2019, Alphonse Mariyagnanaseelan
+
+
+
     treetile: Binary Tree-based tiling layout for Awesome 3
 
     URL:     https://github.com/alfunx/treetile
     Fork of: https://github.com/RobSis/treesome
              https://github.com/guotsuan/treetile
-    License: GNU General Public License v2.0
 
 
 
@@ -465,15 +469,15 @@ local function do_treetile(p)
                     end
 
                     if treetile.direction == 'right' then
-                        focus_node:add_left(bintree.new(focus_id))
-                        focus_node_geo_t:add_left(bintree.new(focus_id))
-                        focus_node:add_right(bintree.new(hash(c)))
-                        focus_node_geo_t:add_right(bintree.new(hash(c)))
+                        focus_node:set_new_left(focus_id)
+                        focus_node_geo_t:set_new_left(focus_id)
+                        focus_node:set_new_right(hash(c))
+                        focus_node_geo_t:set_new_right(hash(c))
                     else
-                        focus_node:add_right(bintree.new(focus_id))
-                        focus_node_geo_t:add_right(bintree.new(focus_id))
-                        focus_node:add_left(bintree.new(hash(c)))
-                        focus_node_geo_t:add_left(bintree.new(hash(c)))
+                        focus_node:set_new_right(focus_id)
+                        focus_node_geo_t:set_new_right(focus_id)
+                        focus_node:set_new_left(hash(c))
+                        focus_node_geo_t:set_new_left(hash(c))
                     end
 
                     local useless_gap = tag.gap or tonumber(beautiful.useless_gap)
