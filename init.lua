@@ -217,13 +217,13 @@ function bintree:show_detailed(level, child)
 
     if type(self.data) ~= "table" then
         print(table.concat {
-            string.rep(" ", level),
+            string.rep("  ", level),
             child, "Node[",
             tostring(self.data), "]",
         })
     else
         print(table.concat {
-            string.rep(" ", level),
+            string.rep("  ", level),
             child, "Node[",
             "x:", tostring(self.data.x),      " ",
             "y:", tostring(self.data.y),      " ",
