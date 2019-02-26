@@ -69,6 +69,13 @@ end
 -- Remove leaf node if predicate returns true
 -- (Removes a node, parent is replaced by sibling.)
 function bintree:remove_if(predicate)
+    if predicate(self) then
+        self.data = nil
+        self.left = nil
+        self.right = nil
+        return self
+    end
+
     if self.left and predicate(self.left) then
         local new_self = {
             data = self.right.data,
