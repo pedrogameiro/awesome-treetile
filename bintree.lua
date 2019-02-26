@@ -73,7 +73,7 @@ function bintree:remove_if(predicate)
         local new_self = {
             data = self.right.data,
             left = self.right.left,
-            right = self.right.right
+            right = self.right.right,
         }
         self.data = new_self.data
         self.left = new_self.left
@@ -85,7 +85,7 @@ function bintree:remove_if(predicate)
         local new_self = {
             data = self.left.data,
             left = self.left.left,
-            right = self.left.right
+            right = self.left.right,
         }
         self.data = new_self.data
         self.left = new_self.left
@@ -172,16 +172,16 @@ function bintree:swap_leaves(data1, data2)
 end
 
 -- Print tree
-function bintree.show(node, level)
+function bintree:show(level)
     if not level then level = 0 end
-    if not node then return end
+    if not self then return end
 
     print(table.concat {
-        string.rep(" ", level), "Node[", tostring(node.data), "]",
+        string.rep(" ", level), "Node[", tostring(self.data), "]",
     })
 
-    bintree.show(node.left, level + 1)
-    bintree.show(node.right, level + 1)
+    bintree.show(self.left, level + 1)
+    bintree.show(self.right, level + 1)
 end
 
 return bintree
