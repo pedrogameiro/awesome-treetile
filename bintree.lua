@@ -17,6 +17,7 @@ local bintree = {}
 bintree.__index = bintree
 
 function bintree.new(data, left, right)
+    assert(data and type(data) == "table")
     return setmetatable({
         data = data,
         left = left,
@@ -24,15 +25,17 @@ function bintree.new(data, left, right)
     }, bintree)
 end
 
--- New left node (forwards to constructor)
-function bintree:set_new_left(...)
-    self.left = bintree.new(...)
+-- New left node
+function bintree:set_new_left(data)
+    assert(data and type(data) == "table")
+    self.left = bintree.new(data)
     return self.left
 end
 
--- New right node (forwards to constructor)
-function bintree:set_new_right(...)
-    self.right = bintree.new(...)
+-- New right node
+function bintree:set_new_right(data)
+    self.right = bintree.new(data)
+    assert(data and type(data) == "table")
     return self.right
 end
 
@@ -61,20 +64,20 @@ function bintree:find_if(predicate)
         or self.right and self.right:find_if(predicate)
 end
 
--- Get node for matching data
-function bintree:find(data)
-    return self:find_if(get_predicate(data))
-end
+-- -- Get node for matching data
+-- function bintree:find(data)
+--     return self:find_if(get_predicate(data))
+-- end
 
 -- Remove leaf node if predicate returns true
 -- (Removes a node, parent is replaced by sibling.)
 function bintree:remove_if(predicate)
-    if predicate(self) then
-        self.data = nil
-        self.left = nil
-        self.right = nil
-        return self
-    end
+    -- if predicate(self) then
+    --     self.data = nil
+    --     self.left = nil
+    --     self.right = nil
+    --     return self
+    -- end
 
     if self.left and predicate(self.left) then
         local new_self = {
@@ -111,10 +114,10 @@ function bintree:remove_if(predicate)
     end
 end
 
--- Remove leaf node for matching data
-function bintree:remove(data)
-    return self:remove_if(get_predicate(data))
-end
+-- -- Remove leaf node for matching data
+-- function bintree:remove(data)
+--     return self:remove_if(get_predicate(data))
+-- end
 
 -- Get sibling of node where predicate returns true
 function bintree:get_sibling_if(predicate)
@@ -133,10 +136,10 @@ function bintree:get_sibling_if(predicate)
     end
 end
 
--- Get sibling of node for matching data
-function bintree:get_sibling(data)
-    return self:get_sibling_if(get_predicate(data))
-end
+-- -- Get sibling of node for matching data
+-- function bintree:get_sibling(data)
+--     return self:get_sibling_if(get_predicate(data))
+-- end
 
 -- Get parent of node where predicate returns true
 function bintree:get_parent_if(predicate)
@@ -155,10 +158,10 @@ function bintree:get_parent_if(predicate)
     end
 end
 
--- Get parent of node for matching data
-function bintree:get_parent(data)
-    return self:get_parent_if(get_predicate(data))
-end
+-- -- Get parent of node for matching data
+-- function bintree:get_parent(data)
+--     return self:get_parent_if(get_predicate(data))
+-- end
 
 -- Swap two nodes where predicate returns true
 function bintree:swap_leaves_if(predicate1, predicate2)
@@ -171,8 +174,8 @@ end
 
 -- Swap two nodes for matching data
 function bintree:swap_leaves(data1, data2)
-    local leaf1 = self:find(data1)
-    local leaf2 = self:find(data2)
+    local leaf1 = self:find_if(get_predicate(data1))
+    local leaf2 = self:find_if(get_predicate(data2))
 
     if not (leaf1 and leaf2) then return end
     leaf1.data, leaf2.data = leaf2.data, leaf1.data
