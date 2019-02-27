@@ -16,10 +16,11 @@ local tostring     = tostring
 local bintree = {}
 bintree.__index = bintree
 
-function bintree.new(data, left, right)
+function bintree.new(data, parent, left, right)
     assert(data and type(data) == "table")
     return setmetatable({
         data = data,
+        parent = parent,
         left = left,
         right = right,
     }, bintree)
@@ -28,25 +29,27 @@ end
 -- New left node
 function bintree:set_new_left(data)
     assert(data and type(data) == "table")
-    self.left = bintree.new(data)
+    self.left = bintree.new(data, self)
     return self.left
 end
 
 -- New right node
 function bintree:set_new_right(data)
-    self.right = bintree.new(data)
     assert(data and type(data) == "table")
+    self.right = bintree.new(data, self)
     return self.right
 end
 
 -- Set left node
 function bintree:set_left(node)
+    node.parent = self
     self.left = node
     return self.left
 end
 
 -- Set right node
 function bintree:set_right(node)
+    node.parent = self
     self.right = node
     return self.right
 end
@@ -59,9 +62,17 @@ end
 
 -- Get node if predicate returns true
 function bintree:find_if(predicate)
-    if predicate(self) then return self end
-    return self.left and self.left:find_if(predicate)
-        or self.right and self.right:find_if(predicate)
+    if type(predicate) == "function" then
+        if predicate(self) then return self end
+        return self.left and self.left:find_if(predicate)
+            or self.right and self.right:find_if(predicate)
+    end
+
+    local nodes = { }
+    for _, f in pairs(predicate) do
+        table.insert(nodes, (self:find_if(f)))
+    end
+    return nodes
 end
 
 -- -- Get node for matching data
@@ -80,6 +91,7 @@ function bintree:remove_if(predicate)
     -- end
 
     if self.left and predicate(self.left) then
+        self.left.parent = nil
         local new_self = {
             data = self.right.data,
             left = self.right.left,
@@ -92,6 +104,7 @@ function bintree:remove_if(predicate)
     end
 
     if self.right and predicate(self.right) then
+        self.right.parent = nil
         local new_self = {
             data = self.left.data,
             left = self.left.left,
@@ -179,6 +192,12 @@ function bintree:swap_leaves(data1, data2)
 
     if not (leaf1 and leaf2) then return end
     leaf1.data, leaf2.data = leaf2.data, leaf1.data
+end
+
+function bintree:apply(fn)
+    if self.left then self.left:apply(fn) end
+    fn(self)
+    if self.right then self.right:apply(fn) end
 end
 
 -- Print tree
