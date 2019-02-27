@@ -92,11 +92,6 @@ local function table_find(tbl, item)
     return false
 end
 
--- Get an unique identifier of a window.
-local function hash(client)
-    return client and client.window
-end
-
 local function table_diff(table1, table2)
     local diff_list = {}
     for i, v in ipairs(table1) do
@@ -113,8 +108,12 @@ local function match_hash(c)
     end
 end
 
+local function cleanup(node)
+    node.data.id = nil
+end
+
 local function apply_geometry(t)
-    return function (node)
+    return function(node)
         if not node.data.id then return end
         local c = node.data.id
         local g = {
@@ -196,15 +195,42 @@ function bintree:add_client(client, split, location)
     self.data.id = nil
 end
 
+function bintree:move_up_to(node)
+    node.data.id, self.data.id = self.data.id, nil
+    node.direction = self.direction
+
+    if not self.left then
+        if node.left then
+            if node.left.left then node.left:remove_left(cleanup) end
+            if node.left.right then node.left:remove_right(cleanup) end
+            node:remove_left(cleanup)
+        end
+    end
+
+    if not self.right then
+        if node.right then
+            if node.right.left then node.right:remove_left(cleanup) end
+            if node.right.right then node.right:remove_right(cleanup) end
+            node:remove_right(cleanup)
+        end
+    end
+
+    if self.left then
+        self.left:move_up_to(node.left)
+    end
+
+    if self.right then
+        self.right:move_up_to(node.right)
+    end
+end
+
 function bintree:remove_client(client)
-    if self.right.data.id == client then
-        self.right = nil
-        self.data.id = self.left.data.id
-        self.left = nil
+    if self.right and self.right.data.id == client then
+        self.left:move_up_to(self)
+    elseif self.left and self.left.data.id == client then
+        self.right:move_up_to(self)
     else
-        self.left = nil
-        self.data.id = self.right.data.id
-        self.right = nil
+        assert(false)
     end
 end
 
@@ -357,11 +383,9 @@ local function client_added(p, t)
                     height = p.workarea.height,
                 },
             }
-            table.insert(trees[t].clients, c)
         elseif focus then
             trees[t].t:find_if(match_hash(focus))
                     :add_client(c, force_split)
-            table.insert(trees[t].clients, c)
             focus = c
         end
     end
@@ -373,14 +397,19 @@ end
 local function client_removed(p, t)
     local p_clients = { }
     for _, c in ipairs(p.clients) do p_clients[c] = true end
-    for i, c in ipairs(trees[t].clients) do
+    for _, c in ipairs(trees[t].clients) do
         if not p_clients[c] then
-            local node = trees[t].t:get_parent_if(match_hash(c))
-            if node then node:remove_client(c) end
-            trees[t].clients[i] = nil
+            local node = trees[t].t:find_if(match_hash(c))
+            if node and node.parent then
+                node.parent:remove_client(c)
+            else
+                print(" >>> ROOT")
+                assert(not trees[t].t.left and not trees[t].t.right)
+                trees[t].t:remove(cleanup)
+                trees[t].t = nil
+            end
         end
     end
-    trees[t].clients = gtable.from_sparse(trees[t].clients)
 end
 
 -- Update the geometries of all clients.
@@ -401,20 +430,17 @@ function treetile.arrange(p)
             t = nil,
             last_focus = nil,
             clients = { },
-            last_clients = { },
         }
     end
 
     -- Rearange only on change.
-    local update_needed
     local changed = (#trees[t].clients == #p.clients and 0)
             or (#p.clients > #trees[t].clients and 1 or -1)
 
-    local diff = table_diff(p.clients, trees[t].last_clients)
+    local diff = table_diff(p.clients, trees[t].clients)
     print("diff:", #diff)
     for _, c in pairs(diff) do print(tostring(c)) end
-    if #p.clients == #trees[t].last_clients and #diff == 2 then
-        -- trees[t].t:swap_leaves_if(match_hash(diff[1]), match_hash(diff[2]))
+    if #p.clients == #trees[t].clients and #diff == 2 then
         local nodes = trees[t].t:find_if { match_hash(diff[1]), match_hash(diff[2]) }
         nodes[1].data.id, nodes[2].data.id = nodes[2].data.id, nodes[1].data.id
         nodes[1]:apply(apply_geometry(t))
@@ -427,9 +453,10 @@ function treetile.arrange(p)
         client_added(p, t)
     end
 
-    if changed ~= 0 or layout_switch or update_needed then
+    if changed ~= 0 or layout_switch then
         update_clients(t)
     end
+    layout_switch = false
 
     print("changed:", changed)
     if changed ~= 0 and trees[t] and trees[t].t then
@@ -437,8 +464,7 @@ function treetile.arrange(p)
         trees[t].t:show_detailed()
     end
 
-    trees[t].last_clients = p.clients
-    layout_switch = false
+    trees[t].clients = p.clients
 end
 
 -- -- TODO

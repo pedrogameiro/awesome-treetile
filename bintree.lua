@@ -17,9 +17,9 @@ local bintree = {}
 bintree.__index = bintree
 
 function bintree.new(data, parent, left, right)
-    assert(data and type(data) == "table")
+    assert(data and type(data) == "table" or data == nil)
     return setmetatable({
-        data = data,
+        data = data or { },
         parent = parent,
         left = left,
         right = right,
@@ -54,6 +54,35 @@ function bintree:set_right(node)
     return self.right
 end
 
+-- Remove self
+function bintree:remove(fn)
+    if fn then fn(self) end
+    self.data   = nil
+    self.parent = nil
+    self.left   = nil
+    self.right  = nil
+end
+
+-- Remove left node
+function bintree:remove_left(fn)
+    if fn then fn(self.left) end
+    self.left.data   = nil
+    self.left.parent = nil
+    self.left.left   = nil
+    self.left.right  = nil
+    self.left = nil
+end
+
+-- Remove right node
+function bintree:remove_right(fn)
+    if fn then fn(self.right) end
+    self.right.data   = nil
+    self.right.parent = nil
+    self.right.left   = nil
+    self.right.right  = nil
+    self.right = nil
+end
+
 local function get_predicate(data)
     return function(node)
         return node.data == data
@@ -83,13 +112,6 @@ end
 -- Remove leaf node if predicate returns true
 -- (Removes a node, parent is replaced by sibling.)
 function bintree:remove_if(predicate)
-    -- if predicate(self) then
-    --     self.data = nil
-    --     self.left = nil
-    --     self.right = nil
-    --     return self
-    -- end
-
     if self.left and predicate(self.left) then
         self.left.parent = nil
         local new_self = {
@@ -154,22 +176,22 @@ end
 --     return self:get_sibling_if(get_predicate(data))
 -- end
 
--- Get parent of node where predicate returns true
-function bintree:get_parent_if(predicate)
-    if predicate(self) then return nil end
-
-    if self.left then
-        if predicate(self.left) then return self end
-        local output = self.left:get_parent_if(predicate)
-        if output then return output end
-    end
-
-    if self.right then
-        if predicate(self.right) then return self end
-        local output = self.right:get_parent_if(predicate)
-        if output then return output end
-    end
-end
+-- -- Get parent of node where predicate returns true
+-- function bintree:get_parent_if(predicate)
+--     if predicate(self) then return nil end
+--
+--     if self.left then
+--         if predicate(self.left) then return self end
+--         local output = self.left:get_parent_if(predicate)
+--         if output then return output end
+--     end
+--
+--     if self.right then
+--         if predicate(self.right) then return self end
+--         local output = self.right:get_parent_if(predicate)
+--         if output then return output end
+--     end
+-- end
 
 -- -- Get parent of node for matching data
 -- function bintree:get_parent(data)
