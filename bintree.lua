@@ -216,23 +216,28 @@ function bintree:swap_leaves(data1, data2)
     leaf1.data, leaf2.data = leaf2.data, leaf1.data
 end
 
+-- Apply to each node (in-order tree traversal)
 function bintree:apply(fn)
     if self.left then self.left:apply(fn) end
     fn(self)
     if self.right then self.right:apply(fn) end
 end
 
--- Print tree
-function bintree:show(level)
+-- Apply to each node, with levels (in-order tree traversal)
+function bintree:apply_levels(fn, level)
     if not level then level = 0 end
-    if not self then return end
+    if self.left then self.left:apply(fn, level + 1) end
+    fn(self, level)
+    if self.right then self.right:apply(fn, level + 1) end
+end
 
-    print(table.concat {
-        string.rep("  ", level), "Node[", tostring(self.data), "]",
-    })
-
-    bintree.show(self.left, level + 1)
-    bintree.show(self.right, level + 1)
+-- Print tree
+function bintree:show()
+    self:apply_levels(function(node, level)
+        print(table.concat {
+            string.rep("  ", level), "Node[", tostring(node.data), "]",
+        })
+    end)
 end
 
 return bintree

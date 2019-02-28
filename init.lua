@@ -48,18 +48,21 @@ local tonumber     = tonumber
 local tostring     = tostring
 local type         = type
 
-local capi         = {
-    client         = client,
-    tag            = tag,
-    mouse          = mouse,
-    screen         = screen,
-    mousegrabber   = mousegrabber
+local capi = {
+    client       = client,
+    tag          = tag,
+    mouse        = mouse,
+    screen       = screen,
+    mousegrabber = mousegrabber,
 }
 
-local treetile     = {
-    focusnew       = true,
-    name           = "treetile",
-    direction      = "right",
+local treetile = {
+    focusnew         = true,
+    name             = "treetile",
+    new_location     = "right",
+    new_ratio        = 0.5,
+    new_split        = "vertical",
+    rotate_on_remove = true
 }
 
 -- globals
@@ -85,13 +88,6 @@ local function debug_info(message)
     end
 end
 
-local function table_find(tbl, item)
-    for key, value in pairs(tbl) do
-        if value == item then return key end
-    end
-    return false
-end
-
 local function table_diff(table1, table2)
     local diff_list = {}
     for i, v in ipairs(table1) do
@@ -102,7 +98,7 @@ local function table_diff(table1, table2)
     return diff_list
 end
 
-local function match_hash(c)
+local function match(c)
     return function(node)
         return node.data.id == c
     end
@@ -112,165 +108,129 @@ local function cleanup(node)
     node.data.id = nil
 end
 
-local function apply_geometry(t)
-    return function(node)
-        if not node.data.id then return end
-        local c = node.data.id
-        local g = {
-            x      = node.data.geometry.x,
-            y      = node.data.geometry.y,
-            width  = node.data.geometry.width  - 2 * t.gap - 2 * c.border_width,
-            height = node.data.geometry.height - 2 * t.gap - 2 * c.border_width,
-        }
-        c:geometry(g)
-    end
-end
-
 -- }}}
 
 -- {{{ bintree enhancement
 
-function bintree:add_client(client, split, location)
-    local vertical
-    if split == nil then
-        vertical = self.data.geometry.width > self.data.geometry.height
-    else
-        vertical = split == "vertical"
-    end
-
-    -- local new_on_left = location == "left" or location == "top"
-    -- local left_id     = not new_on_left and self.data.id or client
-    -- local right_id    =     new_on_left and self.data.id or client
-
+function bintree:add_client(client, split)
     local left_id, right_id
-    if location == "left" or location == "top" then
+    if treetile.new_location == "left" or treetile.new_location == "top" then
         left_id, right_id = client, self.data.id
     else
         left_id, right_id = self.data.id, client
     end
 
-    if vertical then
-        self.data.direction = "vertical"
-        self:set_new_left {
-            id = left_id,
-            geometry = {
-                x      = self.data.geometry.x,
-                y      = self.data.geometry.y,
-                width  = self.data.geometry.width / 2,
-                height = self.data.geometry.height,
-            },
-        }
-        self:set_new_right {
-            id = right_id,
-            geometry = {
-                x      = self.data.geometry.x + self.data.geometry.width / 2,
-                y      = self.data.geometry.y,
-                width  = self.data.geometry.width / 2,
-                height = self.data.geometry.height,
-            },
-        }
-    else
-        self.data.direction = "horizontal"
-        self:set_new_left {
-            id = left_id,
-            geometry = {
-                x      = self.data.geometry.x,
-                y      = self.data.geometry.y,
-                width  = self.data.geometry.width,
-                height = self.data.geometry.height / 2,
-            },
-        }
-        self:set_new_right {
-            id = right_id,
-            geometry = {
-                x      = self.data.geometry.x,
-                y      = self.data.geometry.y + self.data.geometry.height / 2,
-                width  = self.data.geometry.width,
-                height = self.data.geometry.height / 2,
-            },
-        }
-    end
+    self.data.split = split or treetile.new_split
+    self.data.ratio = treetile.new_ratio
+
+    self:set_new_left { id = left_id }
+    self:set_new_right { id = right_id }
 
     -- Not allowed to hold a client now.
     self.data.id = nil
 end
 
-function bintree:move_up_to(node)
-    node.data.id, self.data.id = self.data.id, nil
-    node.direction = self.direction
-
-    if not self.left then
-        if node.left then
-            if node.left.left then node.left:remove_left(cleanup) end
-            if node.left.right then node.left:remove_right(cleanup) end
-            node:remove_left(cleanup)
-        end
-    end
-
-    if not self.right then
-        if node.right then
-            if node.right.left then node.right:remove_left(cleanup) end
-            if node.right.right then node.right:remove_right(cleanup) end
-            node:remove_right(cleanup)
-        end
-    end
-
-    if self.left then
-        self.left:move_up_to(node.left)
-    end
-
-    if self.right then
-        self.right:move_up_to(node.right)
-    end
-end
-
 function bintree:remove_client(client)
+    local node
     if self.right and self.right.data.id == client then
-        self.left:move_up_to(self)
+        self:remove_right(cleanup)
+        node = self.left
     elseif self.left and self.left.data.id == client then
-        self.right:move_up_to(self)
+        self:remove_left(cleanup)
+        node = self.right
     else
         assert(false)
     end
+
+    node.parent = self.parent
+    if self.parent then
+        if self.parent.left == self then
+            self.parent.left = node
+        else
+            self.parent.right = node
+        end
+    end
+
+    return node
 end
 
-function bintree:show_detailed(level)
-    if not level then level = 0 end
+local function calculate_geometry(geometry, split, ratio)
+    local vertical = split == "vertical"
+    local x, y, width, height
 
-    if self.left then
-        bintree.show_detailed(self.left, level + 1)
+    if vertical then
+        x      = geometry.x + geometry.width * ratio
+        width  = geometry.width * ratio
+    else
+        y      = geometry.y + geometry.height * ratio
+        height = geometry.height * ratio
     end
 
-    if self then
-        print(table.concat {
-            string.rep(" ", 4 * level), "●     [",
-            tostring(self.data.id or " "), "] [",
-            tostring(self.data.direction or " "), "] [",
-            "x:", tostring(self.data.geometry.x),      " ",
-            "y:", tostring(self.data.geometry.y),      " ",
-            "w:", tostring(self.data.geometry.width),  " ",
-            "h:", tostring(self.data.geometry.height), "]",
-        })
-    end
+    return {
+        x      = geometry.x,
+        y      = geometry.y,
+        width  = width or geometry.width,
+        height = height or geometry.height,
+    }, {
+        x      = x or geometry.x,
+        y      = y or geometry.y,
+        width  = width or geometry.width,
+        height = height or geometry.height,
+    }
+end
 
-    if self.right then
-        bintree.show_detailed(self.right, level + 1)
+function bintree:apply_geometry(geometry, gaps)
+    assert((self.left and self.right and not self.data.id)
+            or (not self.left and not self.right and self.data.id))
+
+    if self.left and self.right then
+        local g1, g2 = calculate_geometry(geometry, self.data.split, self.data.ratio)
+        self.left:apply_geometry(g1, gaps)
+        self.right:apply_geometry(g2, gaps)
+        return
+    else
+        local c = self.data.id
+        geometry.width  = geometry.width  - 2 * gaps - 2 * c.border_width
+        geometry.height = geometry.height - 2 * gaps - 2 * c.border_width
+        c:geometry(geometry)
     end
+end
+
+function bintree:rotate()
+    if self.data.split == "vertical" then
+        self.data.split = "horizontal"
+    elseif self.data.split == "horizontal" then
+        self.data.split = "vertical"
+    end
+end
+
+function bintree:rotate_all()
+    self:apply(function(node) node:rotate() end)
+end
+
+function bintree:show_detailed()
+    self:apply_levels(function(node, level)
+        if node.data.id then
+            print(table.concat {
+                string.rep(" ", 4 * level), "●     [",
+                "x:", tostring(node.data.id.x),      " ",
+                "y:", tostring(node.data.id.y),      " ",
+                "w:", tostring(node.data.id.width),  " ",
+                "h:", tostring(node.data.id.height), "]",
+            })
+        else
+            print(table.concat {
+                string.rep(" ", 4 * level), "●     [",
+                tostring(node.data.ratio), "] [",
+                tostring(node.data.split), "]",
+            })
+        end
+    end)
 end
 
 -- }}}
 
--- {{{ public functions
-
-function treetile.horizontal()
-    force_split = "horizontal"
-    debug_info('Next split is horizontal.')
-end
-
-function treetile.vertical()
-    force_split = "vertical"
-    debug_info('Next split is vertical.')
-end
+-- {{{ implementation
 
 -- function treetile.resize_client(inc)
 --     -- inc: percentage of change: 0.01, 0.99 with +/-
@@ -280,8 +240,8 @@ end
 --     local t = (capi.screen[focus_c.screen].selected_tag
 --             or awful.tag.selected(capi.mouse.screen))
 --
---     local parent_c = trees[t].t:get_parent_if(match_hash(focus_c))
---     local sib_node = parent_c:get_sibling_if(match_hash(focus_c))
+--     local parent_c = trees[t].root:get_parent_if(match(focus_c))
+--     local sib_node = parent_c:get_sibling_if(match(focus_c))
 --     local sib_node_geo
 --     if type(sib_node.data.id) == "number" then
 --         sib_node_geo = trees[t].geo[sib_node.data.id]
@@ -299,7 +259,7 @@ end
 --     local new_sib = {}
 --     local useless_gap = (t.gap or tonumber(beautiful.useless_gap) or 0) * 2.0
 --
---     if parent_c.data.direction == "vertical" then
+--     if parent_c.data.split == "vertical" then
 --         local f =  math.ceil(clip(g.height * clip(math.abs(inc), 0.01, 0.99), 5, 30))
 --         if inc < 0 then f = -f end
 --
@@ -323,7 +283,7 @@ end
 --         end
 --     end
 --
---     if parent_c.data.direction == "horizontal" then
+--     if parent_c.data.split == "horizontal" then
 --         local f =  math.ceil(clip(g.width * clip(math.abs(inc), 0.01, 0.99), 5, 30))
 --         if inc < 0 then f = -f end
 --
@@ -370,23 +330,20 @@ local function client_added(p, t)
     end
 
     for _, c in pairs(p.clients) do
-        if gtable.hasitem(trees[t].clients, c) then
-            -- Do nothing.
-        elseif not trees[t].t then
-            -- Create a new bintree root.
-            trees[t].t = bintree.new {
-                id = c,
-                geometry = {
-                    x      = p.workarea.x + t.gap,
-                    y      = p.workarea.y + t.gap,
-                    width  = p.workarea.width,
-                    height = p.workarea.height,
-                },
-            }
-        elseif focus then
-            trees[t].t:find_if(match_hash(focus))
-                    :add_client(c, force_split)
-            focus = c
+        if not gtable.hasitem(trees[t].clients, c) then
+            if not trees[t].root then
+                trees[t].root = bintree.new { id = c }
+            elseif focus then
+                local node = trees[t].root:find_if(match(focus))
+                local next_split
+                if node.parent and node.parent.data.split == "vertical" then
+                    next_split = "horizontal"
+                else
+                    next_split = "vertical"
+                end
+                node:add_client(c, force_split or next_split)
+                focus = c
+            end
         end
     end
 
@@ -399,23 +356,35 @@ local function client_removed(p, t)
     for _, c in ipairs(p.clients) do p_clients[c] = true end
     for _, c in ipairs(trees[t].clients) do
         if not p_clients[c] then
-            local node = trees[t].t:find_if(match_hash(c))
+            local node = trees[t].root:find_if(match(c))
             if node and node.parent then
-                node.parent:remove_client(c)
+                local root
+                if node.parent.parent then
+                    root = node.parent:remove_client(c).parent
+                else
+                    trees[t].root = node.parent:remove_client(c)
+                    root = trees[t].root
+                end
+                if treetile.rotate_on_remove then
+                    root:rotate_all()
+                end
             else
-                print(" >>> ROOT")
-                assert(not trees[t].t.left and not trees[t].t.right)
-                trees[t].t:remove(cleanup)
-                trees[t].t = nil
+                assert(not trees[t].root.left and not trees[t].root.right)
+                trees[t].root:remove(cleanup)
+                trees[t].root = nil
             end
         end
     end
 end
 
 -- Update the geometries of all clients.
-local function update_clients(t)
-    if not trees[t].t then return end
-    trees[t].t:apply(apply_geometry(t))
+local function update_clients(p, t)
+    trees[t].root:apply_geometry({
+        x      = p.workarea.x + t.gap,
+        y      = p.workarea.y + t.gap,
+        width  = p.workarea.width,
+        height = p.workarea.height,
+    }, t.gap)
 end
 
 function treetile.arrange(p)
@@ -427,7 +396,7 @@ function treetile.arrange(p)
     -- Create a new root.
     if not trees[t] then
         trees[t] = {
-            t = nil,
+            root = nil,
             last_focus = nil,
             clients = { },
         }
@@ -437,14 +406,14 @@ function treetile.arrange(p)
     local changed = (#trees[t].clients == #p.clients and 0)
             or (#p.clients > #trees[t].clients and 1 or -1)
 
+    local update_needed
     local diff = table_diff(p.clients, trees[t].clients)
     print("diff:", #diff)
     for _, c in pairs(diff) do print(tostring(c)) end
     if #p.clients == #trees[t].clients and #diff == 2 then
-        local nodes = trees[t].t:find_if { match_hash(diff[1]), match_hash(diff[2]) }
+        local nodes = trees[t].root:find_if { match(diff[1]), match(diff[2]) }
         nodes[1].data.id, nodes[2].data.id = nodes[2].data.id, nodes[1].data.id
-        nodes[1]:apply(apply_geometry(t))
-        nodes[2]:apply(apply_geometry(t))
+        update_needed = true
     end
 
     if changed < 0 then
@@ -453,15 +422,15 @@ function treetile.arrange(p)
         client_added(p, t)
     end
 
-    if changed ~= 0 or layout_switch then
-        update_clients(t)
+    if (changed ~= 0 or layout_switch or update_needed) and trees[t].root then
+        update_clients(p, t)
     end
     layout_switch = false
 
     print("changed:", changed)
-    if changed ~= 0 and trees[t] and trees[t].t then
+    if changed ~= 0 and trees[t] and trees[t].root then
         print("tree:", t.name)
-        trees[t].t:show_detailed()
+        trees[t].root:show_detailed()
     end
 
     trees[t].clients = p.clients
@@ -476,13 +445,13 @@ end
 --     local cursor
 --     local corner_coords
 --
---     local parent_c = trees[t].t:get_parent_if(match_hash(c))
+--     local parent_c = trees[t].root:get_parent_if(match(c))
 --     local parent_geo
 --
 --     local new_y = nil
 --     local new_x = nil
 --
---     local sib_node = parent_c:get_sibling_if(match_hash(c))
+--     local sib_node = parent_c:get_sibling_if(match(c))
 --     local sib_node_geo
 --     if type(sib_node.data.id) == "number" then
 --         sib_node_geo = trees[t].geo[sib_node.data.id]
@@ -497,13 +466,13 @@ end
 --     end
 --
 --     if parent_c then
---         if parent_c.data.direction == "vertical" then
+--         if parent_c.data.split == "vertical" then
 --             cursor = "sb_v_double_arrow"
 --             new_y = math.max(g.y, sib_node_geo.y)
 --             new_x = g.x + g.width / 2
 --         end
 --
---         if parent_c.data.direction == "horizontal" then
+--         if parent_c.data.split == "horizontal" then
 --             cursor = "sb_h_double_arrow"
 --             new_x = math.max(g.x, sib_node_geo.x)
 --             new_y = g.y + g.height / 2
@@ -533,7 +502,7 @@ end
 --                 new_geo.width = g.width
 --                 new_geo.height = g.height
 --
---                 if parent_c.data.direction == "vertical" then
+--                 if parent_c.data.split == "vertical" then
 --                     if g.y > sib_node_geo.y then
 --                         new_geo.height = clip(g.height - fact_y, min_y, parent_geo.height - min_y)
 --                         new_geo.y= clip(m.y, sib_node_geo.y + min_y, parent_geo.y + parent_geo.height - min_y)
@@ -553,7 +522,7 @@ end
 --                     end
 --                 end
 --
---                 if parent_c.data.direction == "horizontal" then
+--                 if parent_c.data.split == "horizontal" then
 --                     if g.x  > sib_node_geo.x  then
 --                         new_geo.width = clip(g.width - fact_x, min_x, parent_geo.width - min_x)
 --                         new_geo.x = clip(m.x, sib_node_geo.x + min_x, parent_geo.x + parent_geo.width - min_x)
@@ -598,6 +567,38 @@ end
 -- function treetile.mouse_resize_handler(c, corner, x, y)
 --     mouse_resize_handler(c, corner,x,y)
 -- end
+
+-- }}}
+
+-- {{{ public functions
+
+function treetile.horizontal()
+    force_split = "horizontal"
+    debug_info('Next split is horizontal.')
+end
+
+function treetile.vertical()
+    force_split = "vertical"
+    debug_info('Next split is vertical.')
+end
+
+function treetile.rotate(c)
+    local t = c and c.screen.selected_tag
+            or awful.screen.focused().selected_tag
+
+    local node = c and trees[t].root:find_if(match(c))
+            or trees[t].root
+    node:rotate()
+end
+
+function treetile.rotate_all(c)
+    local t = c and c.screen.selected_tag
+            or awful.screen.focused().selected_tag
+
+    local node = c and trees[t].root:find_if(match(c))
+            or trees[t].root
+    node:rotate_all()
+end
 
 -- }}}
 
