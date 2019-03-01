@@ -38,7 +38,7 @@ local debug        = require("gears.debug")
 local gtable       = require("gears.table")
 local naughty      = require("naughty")
 
-local bintree      = require("treetile/bintree")
+local bintree      = require("treetile.bintree")
 local os           = os
 local math         = math
 local ipairs       = ipairs
@@ -57,12 +57,13 @@ local capi = {
 }
 
 local treetile = {
-    focusnew         = true,
     name             = "treetile",
-    new_location     = "right",
+    new_focus        = true,
     new_ratio        = 0.5,
     new_split        = "vertical",
-    rotate_on_remove = true
+    new_vertical     = "right",
+    new_horizontal   = "bottom",
+    rotate_on_remove = false,
 }
 
 -- globals
@@ -113,15 +114,16 @@ end
 -- {{{ bintree enhancement
 
 function bintree:add_client(client, split)
+    self.data.split = split or treetile.new_split
+    self.data.ratio = treetile.new_ratio
+
     local left_id, right_id
-    if treetile.new_location == "left" or treetile.new_location == "top" then
+    if self.data.split == "vertical" and treetile.new_vertical == "left"
+            or self.data.split == "horizontal" and treetile.new_vertical == "top" then
         left_id, right_id = client, self.data.id
     else
         left_id, right_id = self.data.id, client
     end
-
-    self.data.split = split or treetile.new_split
-    self.data.ratio = treetile.new_ratio
 
     self:set_new_left { id = left_id }
     self:set_new_right { id = right_id }
@@ -197,14 +199,12 @@ function bintree:apply_geometry(geometry, gaps)
 end
 
 function bintree:rotate()
-    if self.data.split == "vertical" then
-        self.data.split = "horizontal"
-    elseif self.data.split == "horizontal" then
-        self.data.split = "vertical"
-    end
+    if not self.data.split then return end
+    self.data.split = self.data.split == "vertical" and "horizontal" or "vertical"
 end
 
 function bintree:rotate_all()
+    if not self.data.split then return end
     self:apply(function(node) node:rotate() end)
 end
 
@@ -319,13 +319,11 @@ end
 -- One or more clients are added. Put them in the tree.
 local function client_added(p, t)
     -- TODO: find a better to handle this
-    local focus = treetile.focusnew
+    local focus = treetile.new_focus
             and awful.client.focus.history.get(p.screen, 1)
             or capi.client.focus
 
-    if focus and not focus.floating then
-        trees[t].last_focus = focus
-    else
+    if not focus or focus.floating then
         focus = trees[t].last_focus
     end
 
@@ -333,8 +331,9 @@ local function client_added(p, t)
         if not gtable.hasitem(trees[t].clients, c) then
             if not trees[t].root then
                 trees[t].root = bintree.new { id = c }
-            elseif focus then
+            else
                 local node = trees[t].root:find_if(match(focus))
+                        or trees[t].root:find_if(match(trees[t].last_focus))
                 local next_split
                 if node.parent and node.parent.data.split == "vertical" then
                     next_split = "horizontal"
@@ -342,11 +341,14 @@ local function client_added(p, t)
                     next_split = "vertical"
                 end
                 node:add_client(c, force_split or next_split)
-                focus = c
             end
+            focus = c
         end
     end
 
+    if focus and not focus.floating then
+        trees[t].last_focus = focus
+    end
     force_split = nil
 end
 
@@ -358,18 +360,15 @@ local function client_removed(p, t)
         if not p_clients[c] then
             local node = trees[t].root:find_if(match(c))
             if node and node.parent then
-                local root
                 if node.parent.parent then
-                    root = node.parent:remove_client(c).parent
+                    local n = node.parent:remove_client(c)
+                    trees[t].last_focus = n.data.id
+                    n.parent:rotate_all()
                 else
                     trees[t].root = node.parent:remove_client(c)
-                    root = trees[t].root
-                end
-                if treetile.rotate_on_remove then
-                    root:rotate_all()
+                    trees[t].last_focus = trees[t].root.data.id
                 end
             else
-                assert(not trees[t].root.left and not trees[t].root.right)
                 trees[t].root:remove(cleanup)
                 trees[t].root = nil
             end
@@ -434,6 +433,7 @@ function treetile.arrange(p)
     end
 
     trees[t].clients = p.clients
+    trees[t].last_p = p
 end
 
 -- -- TODO
@@ -586,18 +586,46 @@ function treetile.rotate(c)
     local t = c and c.screen.selected_tag
             or awful.screen.focused().selected_tag
 
-    local node = c and trees[t].root:find_if(match(c))
-            or trees[t].root
-    node:rotate()
+    local node = c and trees[t].root:find_if(match(c)).parent
+    if node then
+        node:rotate()
+        update_clients(trees[t].last_p, t)
+    end
 end
 
 function treetile.rotate_all(c)
     local t = c and c.screen.selected_tag
             or awful.screen.focused().selected_tag
 
-    local node = c and trees[t].root:find_if(match(c))
-            or trees[t].root
-    node:rotate_all()
+    local node = c and trees[t].root:find_if(match(c)).parent
+    if node then
+        node:rotate_all()
+        update_clients(trees[t].last_p, t)
+    end
+end
+
+function treetile.swap(c)
+    local t = c and c.screen.selected_tag
+            or awful.screen.focused().selected_tag
+
+    local node = c and trees[t].root:find_if(match(c)).parent
+    if node then
+        node:swap_children()
+        update_clients(trees[t].last_p, t)
+    end
+end
+
+function treetile.swap_all(c)
+    local t = c and c.screen.selected_tag
+            or awful.screen.focused().selected_tag
+
+    local node = c and trees[t].root:find_if(match(c)).parent
+    if node then
+        node:apply(function(n)
+            if not n.parent or n.parent.right == n then n:swap_children() end
+        end)
+        update_clients(trees[t].last_p, t)
+    end
 end
 
 -- }}}

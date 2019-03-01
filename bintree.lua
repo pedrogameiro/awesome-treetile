@@ -83,6 +83,10 @@ function bintree:remove_right(fn)
     self.right = nil
 end
 
+function bintree:swap_children()
+    self.left, self.right = self.right, self.left
+end
+
 local function get_predicate(data)
     return function(node)
         return node.data == data
@@ -226,9 +230,9 @@ end
 -- Apply to each node, with levels (in-order tree traversal)
 function bintree:apply_levels(fn, level)
     if not level then level = 0 end
-    if self.left then self.left:apply(fn, level + 1) end
+    if self.left then self.left:apply_levels(fn, level + 1) end
     fn(self, level)
-    if self.right then self.right:apply(fn, level + 1) end
+    if self.right then self.right:apply_levels(fn, level + 1) end
 end
 
 -- Print tree
