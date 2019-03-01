@@ -16,7 +16,7 @@
 
     Because the the split of space is depending on the parent node, which is
     current focused client.  Therefore it is necessary to set the correct
-    focus option, "treetile.focusnew".
+    focus option, "treetile.new_focus".
 
     If the new created client will automatically gain the focus, for exmaple
     in rc.lua with the settings:
@@ -27,8 +27,8 @@
           properties = { focus = awful.client.focus.filter,
     ...
 
-    You need to set "treetile.focusnew = true"
-    Otherwise, set "treetile.focusnew = false"
+    You need to set "treetile.new_focus = true"
+    Otherwise, set "treetile.new_focus = false"
 
 --]]
 
@@ -67,15 +67,15 @@ local treetile = {
 }
 
 -- globals
-local force_split   = nil
-local layout_switch = false
-local trees         = { }
+local force_split  = nil
+local force_update = false
+local trees        = { }
 
 -- TODO
 -- layout icon
 beautiful.layout_treetile = os.getenv("HOME") .. "/.config/awesome/treetile/layout_icon.png"
 
-capi.tag.connect_signal("property::layout", function() layout_switch = true end)
+capi.tag.connect_signal("property::layout", function() force_update = true end)
 
 -- {{{ helpers
 
@@ -89,14 +89,25 @@ local function debug_info(message)
     end
 end
 
-local function table_diff(table1, table2)
-    local diff_list = {}
-    for i, v in ipairs(table1) do
-        if table2[i] ~= v then
-            table.insert(diff_list, v)
+-- Ugly but optimized.
+local function full_diff(old, new)
+    local added = {}
+    local moved = {}
+    local removed = {}
+    for i, v in ipairs(old) do
+        local new_index = gtable.hasitem(new, v)
+        if new[i] ~= v  and new_index then
+            table.insert(moved, v)
+        elseif not new_index then
+            table.insert(removed, v)
         end
     end
-    return diff_list
+    for _, v in ipairs(new) do
+        if not gtable.hasitem(old, v) then
+            table.insert(added, v)
+        end
+    end
+    return added, moved, removed
 end
 
 local function match(c)
@@ -117,19 +128,18 @@ function bintree:add_client(client, split)
     self.data.split = split or treetile.new_split
     self.data.ratio = treetile.new_ratio
 
-    local left_id, right_id
+    local old_client = self.data.id
+    self.data.id = nil
+
     if self.data.split == "vertical" and treetile.new_vertical == "left"
             or self.data.split == "horizontal" and treetile.new_vertical == "top" then
-        left_id, right_id = client, self.data.id
+        self:set_new_right { id = old_client }
+        return self:set_new_left { id = client }
     else
-        left_id, right_id = self.data.id, client
+        self:set_new_left { id = old_client }
+        return self:set_new_right { id = client }
     end
 
-    self:set_new_left { id = left_id }
-    self:set_new_right { id = right_id }
-
-    -- Not allowed to hold a client now.
-    self.data.id = nil
 end
 
 function bintree:remove_client(client)
@@ -232,118 +242,29 @@ end
 
 -- {{{ implementation
 
--- function treetile.resize_client(inc)
---     -- inc: percentage of change: 0.01, 0.99 with +/-
---     local focus_c = capi.client.focus
---     local g = focus_c:geometry()
---
---     local t = (capi.screen[focus_c.screen].selected_tag
---             or awful.tag.selected(capi.mouse.screen))
---
---     local parent_c = trees[t].root:get_parent_if(match(focus_c))
---     local sib_node = parent_c:get_sibling_if(match(focus_c))
---     local sib_node_geo
---     if type(sib_node.data.id) == "number" then
---         sib_node_geo = trees[t].geo[sib_node.data.id]
---     else
---         sib_node_geo = sib_node.data.geometry
---     end
---
---     if not parent_c then return end
---     local parent_geo = parent_c.data.geometry
---
---     local min_x = 20.0
---     local min_y = 20.0
---
---     local new_geo = gtable.clone(g)
---     local new_sib = {}
---     local useless_gap = (t.gap or tonumber(beautiful.useless_gap) or 0) * 2.0
---
---     if parent_c.data.split == "vertical" then
---         local f =  math.ceil(clip(g.height * clip(math.abs(inc), 0.01, 0.99), 5, 30))
---         if inc < 0 then f = -f end
---
---         -- determine which is on the right side
---         if g.y  > sib_node_geo.y  then
---             new_geo.height = clip(g.height - f, min_y, parent_geo.height - min_y)
---             new_geo.y      = parent_geo.y + parent_geo.height - new_geo.height
---
---             new_sib.width  = parent_geo.width
---             new_sib.height = parent_geo.height - new_geo.height - useless_gap
---             new_sib.x      = parent_geo.x
---             new_sib.y      = parent_geo.y
---         else
---             new_geo.height = clip(g.height + f, min_y, parent_geo.height - min_y)
---             new_geo.y      = g.y
---
---             new_sib.width  = parent_geo.width
---             new_sib.height = parent_geo.height - new_geo.height - useless_gap
---             new_sib.x      = new_geo.x
---             new_sib.y      = new_geo.y + new_geo.height + useless_gap
---         end
---     end
---
---     if parent_c.data.split == "horizontal" then
---         local f =  math.ceil(clip(g.width * clip(math.abs(inc), 0.01, 0.99), 5, 30))
---         if inc < 0 then f = -f end
---
---         -- determine which is on the top side
---         if g.x  > sib_node_geo.x  then
---             new_geo.width  = clip(g.width - f, min_x, parent_geo.width - min_x)
---             new_geo.x      = parent_geo.x + parent_geo.width - new_geo.width
---
---             new_sib.height = parent_geo.height
---             new_sib.width  = parent_geo.width - new_geo.width - useless_gap
---             new_sib.y      = parent_geo.y
---             new_sib.x      = parent_geo.x
---         else
---             new_geo.width  = clip(g.width + f, min_x, parent_geo.width - min_x)
---             new_geo.x      = g.x
---
---             new_sib.height = parent_geo.height
---             new_sib.width  = parent_geo.width - new_geo.width - useless_gap
---             new_sib.y      = parent_geo.y
---             new_sib.x      = parent_geo.x + new_geo.width + useless_gap
---         end
---     end
---
---     trees[t].geo[hash(focus_c)] = new_geo
---     sib_node:update_nodes_geo(new_sib, trees[t].geo)
---
---     for _, c in ipairs(trees[t].clients) do
---         local geo = gtable.clone(trees[t].geo[hash(c)])
---         c:geometry(geo)
---     end
--- end
-
 -- One or more clients are added. Put them in the tree.
-local function client_added(p, t)
-    -- TODO: find a better to handle this
-    local focus = treetile.new_focus
-            and awful.client.focus.history.get(p.screen, 1)
-            or capi.client.focus
+local function add_clients(t, clients, focus)
+    if #clients == 0 then return end
 
-    if not focus or focus.floating then
-        focus = trees[t].last_focus
-    end
+    local node = trees[t].root and (trees[t].root:find_if(match(focus))
+            or trees[t].root:find_if(match(trees[t].last_focus)))
 
-    for _, c in pairs(p.clients) do
-        if not gtable.hasitem(trees[t].clients, c) then
-            if not trees[t].root then
-                trees[t].root = bintree.new { id = c }
-            else
-                local node = trees[t].root:find_if(match(focus))
-                        or trees[t].root:find_if(match(trees[t].last_focus))
-                local next_split
-                if node.parent and node.parent.data.split == "vertical" then
-                    next_split = "horizontal"
-                else
+    for _, c in pairs(clients) do
+        if node then
+            local next_split
+            if node.parent then
+                if node.parent.data.split == "horizontal" then
                     next_split = "vertical"
+                else
+                    next_split = "horizontal"
                 end
-                node:add_client(c, force_split or next_split)
             end
-            focus = c
+            node = node:add_client(c, force_split or next_split)
+        else
+            trees[t].root = bintree.new { id = c }
+            node = trees[t].root
         end
+        focus = c
     end
 
     if focus and not focus.floating then
@@ -353,36 +274,38 @@ local function client_added(p, t)
 end
 
 -- Some client removed. Update the trees.
-local function client_removed(p, t)
-    local p_clients = { }
-    for _, c in ipairs(p.clients) do p_clients[c] = true end
-    for _, c in ipairs(trees[t].clients) do
-        if not p_clients[c] then
-            local node = trees[t].root:find_if(match(c))
-            if node and node.parent then
-                if node.parent.parent then
-                    local n = node.parent:remove_client(c)
-                    trees[t].last_focus = n.data.id
+local function prune_clients(t, clients)
+    if not trees[t].root then return end
+
+    for _, c in ipairs(clients) do
+        local node = trees[t].root:find_if(match(c))
+        if node and node.parent then
+            if node.parent.parent then
+                local n = node.parent:remove_client(c)
+                trees[t].last_focus = n.data.id
+                if treetile.rotate_on_remove then
                     n.parent:rotate_all()
-                else
-                    trees[t].root = node.parent:remove_client(c)
-                    trees[t].last_focus = trees[t].root.data.id
                 end
             else
-                trees[t].root:remove(cleanup)
-                trees[t].root = nil
+                trees[t].root = node.parent:remove_client(c)
+                trees[t].last_focus = trees[t].root.data.id
             end
+        else
+            trees[t].root:remove(cleanup)
+            trees[t].root = nil
+            trees[t].last_focus = nil
+            return
         end
     end
 end
 
 -- Update the geometries of all clients.
-local function update_clients(p, t)
+local function update_clients(t, geometry)
     trees[t].root:apply_geometry({
-        x      = p.workarea.x + t.gap,
-        y      = p.workarea.y + t.gap,
-        width  = p.workarea.width,
-        height = p.workarea.height,
+        x      = geometry.x + t.gap,
+        y      = geometry.y + t.gap,
+        width  = geometry.width,
+        height = geometry.height,
     }, t.gap)
 end
 
@@ -401,40 +324,72 @@ function treetile.arrange(p)
         }
     end
 
-    -- Rearange only on change.
-    local changed = (#trees[t].clients == #p.clients and 0)
-            or (#p.clients > #trees[t].clients and 1 or -1)
+    local added, moved, removed = full_diff(trees[t].clients, p.clients)
+    print("added:", #added)
+    print("moved:", #moved)
+    print("removed:", #removed)
 
-    local update_needed
-    local diff = table_diff(p.clients, trees[t].clients)
-    print("diff:", #diff)
-    for _, c in pairs(diff) do print(tostring(c)) end
-    if #p.clients == #trees[t].clients and #diff == 2 then
-        local nodes = trees[t].root:find_if { match(diff[1]), match(diff[2]) }
+    if #p.clients == #trees[t].clients and #moved == 2 then
+        local nodes = trees[t].root:find_if { match(moved[1]), match(moved[2]) }
         nodes[1].data.id, nodes[2].data.id = nodes[2].data.id, nodes[1].data.id
-        update_needed = true
+        force_update = true
     end
 
-    if changed < 0 then
-        client_removed(p, t)
-    elseif changed > 0 then
-        client_added(p, t)
+    if trees[t].root then
+        prune_clients(t, removed)
     end
 
-    if (changed ~= 0 or layout_switch or update_needed) and trees[t].root then
-        update_clients(p, t)
-    end
-    layout_switch = false
+    if #added > 0 then
+        -- TODO: find a better to handle this
+        local focus = treetile.new_focus
+                and awful.client.focus.history.get(p.screen, 1)
+                or capi.client.focus
 
-    print("changed:", changed)
-    if changed ~= 0 and trees[t] and trees[t].root then
+        if not focus or focus.floating then
+            focus = trees[t].last_focus
+        end
+
+        add_clients(t, added, focus)
+    end
+
+    if trees[t].root and (#added + #moved + #removed > 0 or force_update) then
+        update_clients(t, p.workarea)
+    end
+
+    if trees[t].root and #added + #moved + #removed > 0 then
         print("tree:", t.name)
         trees[t].root:show_detailed()
     end
 
+    force_update = false
     trees[t].clients = p.clients
     trees[t].last_p = p
 end
+
+function treetile.resize_client(inc)
+    -- inc: percentage of change: 0.01, 0.99 with +/-
+    local c = capi.client.focus
+    local t = (capi.screen[c.screen].selected_tag
+            or awful.tag.selected(capi.mouse.screen))
+    if not trees[t].root then return end
+
+    local node = trees[t].root:find_if(match(c))
+    if not node and node.parent then return end
+
+    node.parent.data.ratio = math.min(math.max(node.parent.data.ratio + inc, 1), 0)
+    update_clients(t, trees[t].last_p.workarea)
+end
+
+-- function treetile.mouse_resize_handler(c, corner, x, y)
+--     local t = (capi.screen[c.screen].selected_tag
+--             or awful.tag.selected(capi.mouse.screen))
+--     if not trees[t].root then return end
+--
+--     local node = trees[t].root:find_if(match(c))
+--     local cl = node.data.id
+--     cl.x = x
+--     cl.y = y
+-- end
 
 -- -- TODO
 -- -- Not implimented yet, do not use it!
@@ -589,7 +544,7 @@ function treetile.rotate(c)
     local node = c and trees[t].root:find_if(match(c)).parent
     if node then
         node:rotate()
-        update_clients(trees[t].last_p, t)
+        update_clients(t, trees[t].last_p.workarea)
     end
 end
 
@@ -600,7 +555,7 @@ function treetile.rotate_all(c)
     local node = c and trees[t].root:find_if(match(c)).parent
     if node then
         node:rotate_all()
-        update_clients(trees[t].last_p, t)
+        update_clients(t, trees[t].last_p.workarea)
     end
 end
 
@@ -611,7 +566,7 @@ function treetile.swap(c)
     local node = c and trees[t].root:find_if(match(c)).parent
     if node then
         node:swap_children()
-        update_clients(trees[t].last_p, t)
+        update_clients(t, trees[t].last_p.workarea)
     end
 end
 
@@ -624,7 +579,7 @@ function treetile.swap_all(c)
         node:apply(function(n)
             if not n.parent or n.parent.right == n then n:swap_children() end
         end)
-        update_clients(trees[t].last_p, t)
+        update_clients(t, trees[t].last_p.workarea)
     end
 end
 
