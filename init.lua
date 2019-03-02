@@ -145,10 +145,10 @@ end
 function bintree:remove_client(client)
     local node
     if self.right and self.right.data.id == client then
-        self:remove_right(cleanup)
+        self.right:remove(cleanup)
         node = self.left
     elseif self.left and self.left.data.id == client then
-        self:remove_left(cleanup)
+        self.left:remove(cleanup)
         node = self.right
     else
         assert(false)
@@ -281,16 +281,19 @@ local function prune_clients(t, clients)
         local node = trees[t].root:find_if(match(c))
         if node and node.parent then
             if node.parent.parent then
+                print(" @@@@@ BRANCH 2")
                 local n = node.parent:remove_client(c)
                 trees[t].last_focus = n.data.id
                 if treetile.rotate_on_remove then
                     n.parent:rotate_all()
                 end
             else
+                print(" @@@@@ BRANCH 1")
                 trees[t].root = node.parent:remove_client(c)
                 trees[t].last_focus = trees[t].root.data.id
             end
         else
+            print(" @@@@@ ROOT CLEANUP")
             trees[t].root:remove(cleanup)
             trees[t].root = nil
             trees[t].last_focus = nil
@@ -330,8 +333,9 @@ function treetile.arrange(p)
     print("removed:", #removed)
 
     if #p.clients == #trees[t].clients and #moved == 2 then
-        local nodes = trees[t].root:find_if { match(moved[1]), match(moved[2]) }
-        nodes[1].data.id, nodes[2].data.id = nodes[2].data.id, nodes[1].data.id
+        local node1 = trees[t].root:find_if(match(moved[1]))
+        local node2 = trees[t].root:find_if(match(moved[2]))
+        node1.data.id, node2.data.id = node2.data.id, node1.data.id
         force_update = true
     end
 
