@@ -29,6 +29,7 @@ end
 -- New left node
 function bintree:set_new_left(data)
     assert(data and type(data) == "table")
+    assert(not self.left)
     self.left = bintree.new(data, self)
     return self.left
 end
@@ -36,13 +37,15 @@ end
 -- New right node
 function bintree:set_new_right(data)
     assert(data and type(data) == "table")
+    assert(not self.right)
     self.right = bintree.new(data, self)
     return self.right
 end
 
 -- Set left node
 function bintree:set_left(node)
-    assert(node.data and type(node.data) == "table")
+    assert(node and node.data and type(node.data) == "table")
+    assert(not self.left)
     node.parent = self
     self.left = node
     return self.left
@@ -50,15 +53,39 @@ end
 
 -- Set right node
 function bintree:set_right(node)
-    assert(node.data and type(node.data) == "table")
+    assert(node and node.data and type(node.data) == "table")
+    assert(not self.right)
     node.parent = self
     self.right = node
     return self.right
 end
 
--- Remove node
+-- Get sibling node
+function bintree:get_sibling()
+    if not self.parent then return nil end
+    if self.parent.left == self then
+        return self.parent.right
+    elseif self.parent.right == self then
+        return self.parent.left
+    else
+        assert(false)
+        return nil
+    end
+end
+
+-- Get rightmost leaf node
+function bintree:get_rightmost()
+    return self.right and self.right:get_rightmost() or self
+end
+
+-- Get leftmost leaf node
+function bintree:get_leftmost()
+    return self.left and self.left:get_leftmost() or self
+end
+
+-- Remove node (with cleanup function)
 function bintree:remove(fn)
-    if fn then fn(self) end
+    if fn then fn(self.data) end
 
     if self.parent then
         if self.parent.left == self then
@@ -83,23 +110,6 @@ function bintree:find_if(predicate)
     if predicate(self) then return self end
     return self.left and self.left:find_if(predicate)
             or self.right and self.right:find_if(predicate)
-end
-
--- Get sibling of node where predicate returns true
-function bintree:get_sibling_if(predicate)
-    if predicate(self) then return nil end
-
-    if self.left then
-        if predicate(self.left) then return self.right end
-        local output = self.left:get_sibling_if(predicate)
-        if output then return output end
-    end
-
-    if self.right then
-        if predicate(self.right) then return self.left end
-        local output = self.right:get_sibling_if(predicate)
-        if output then return output end
-    end
 end
 
 -- Apply to each node (in-order tree traversal)
