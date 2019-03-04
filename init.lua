@@ -68,44 +68,41 @@ local treetile = {
 }
 
 -- globals
-local force_split  = nil
-local force_update = false
-local trees        = { }
+local force_split = nil
+local trees       = { }
 
 -- TODO
 -- layout icon
 beautiful.layout_treetile = os.getenv("HOME") .. "/.config/awesome/treetile/layout_icon.png"
 
-capi.tag.connect_signal("property::layout", function() force_update = true end)
-
 -- {{{ helpers
 
 local function debug_info(message)
     if type(message) == "table" then
-        for k,v in pairs(message) do
-            naughty.notify { text = table.concat {"key: ",k," value: ",tostring(v)} }
+        local text = { }
+        for k, v in pairs(message) do
+            table.insert(text, { "key: ", k, " value: ", tostring(v), "\n" })
         end
+        naughty.notify { text = table.concat(text) }
     else
         naughty.notify { text = tostring(message) }
     end
 end
 
--- Ugly but optimized.
+-- Diff clients. Ugly but optimized.
 local function full_diff(old, new)
-    local added = {}
-    local moved = {}
-    local removed = {}
-    for i, v in ipairs(old) do
-        local new_index = gtable.hasitem(new, v)
-        if new[i] ~= v  and new_index then
-            table.insert(moved, v)
+    local added, moved, removed = { }, { }, { }
+    for i = 1, #old do
+        local new_index = gtable.hasitem(new, old[i])
+        if new[i] ~= old[i] and new_index then
+            table.insert(moved, old[i])
         elseif not new_index then
-            table.insert(removed, v)
+            table.insert(removed, old[i])
         end
     end
-    for _, v in ipairs(new) do
-        if not gtable.hasitem(old, v) then
-            table.insert(added, v)
+    for i = 1, #new do
+        if not gtable.hasitem(old, new[i]) then
+            table.insert(added, new[i])
         end
     end
     return added, moved, removed
@@ -116,9 +113,9 @@ local function calculate_geometry(geometry, split, ratio)
     local vertical = split == "vertical"
     local width, height = geometry.width, geometry.height
     if vertical then
-        geometry.width = geometry.width * ratio
+        geometry.width = width * ratio
     else
-        geometry.height = geometry.height * ratio
+        geometry.height = height * ratio
     end
     return geometry, {
         x      = vertical and geometry.x + width * ratio or geometry.x,
@@ -134,30 +131,17 @@ local function match(c)
     end
 end
 
-local function cleanup(data)
-    data.id = nil
+local function cleanup(node)
+    node.data.id = nil
+end
+
+local function rotate(split)
+    return split == "vertical" and "horizontal" or "vertical"
 end
 
 -- }}}
 
 -- {{{ bintree enhancement
-
-function bintree:add_client(client, split)
-    self.data.split = split or treetile.new_split
-    self.data.ratio = treetile.new_ratio
-
-    local old_client = self.data.id
-    self.data.id = nil
-
-    if self.data.split == "vertical" and treetile.new_vertical == "left"
-            or self.data.split == "horizontal" and treetile.new_vertical == "top" then
-        self:set_new_right { id = old_client }
-        return self:set_new_left { id = client }
-    else
-        self:set_new_left { id = old_client }
-        return self:set_new_right { id = client }
-    end
-end
 
 function bintree:apply_geometry(geometry, gaps)
     assert((self.left and self.right and not self.data.id)
@@ -183,22 +167,27 @@ end
 
 function bintree:rotate_all()
     if not self.data.split then return end
-    self:apply(function(node) node:rotate() end)
+    self:apply(bintree.rotate)
 end
 
 function bintree:show_detailed()
     self:apply_levels(function(node, level)
         if node.data.id then
             print(table.concat {
-                string.rep(" ", 4 * level), "●     [",
+                string.rep(" ", 4 * level),
+                node.parent and (node.parent.left == node and "┌" or "└") or " ",
+                " ● [",
                 "x:", tostring(node.data.id.x),      " ",
                 "y:", tostring(node.data.id.y),      " ",
                 "w:", tostring(node.data.id.width),  " ",
-                "h:", tostring(node.data.id.height), "]",
+                "h:", tostring(node.data.id.height), "] [",
+                tostring(node.data.id),              "]",
             })
         else
             print(table.concat {
-                string.rep(" ", 4 * level), "●     [",
+                string.rep(" ", 4 * level),
+                node.parent and (node.parent.left == node and "┌" or "└") or " ",
+                " ● [",
                 tostring(node.data.ratio), "] [",
                 tostring(node.data.split), "]",
             })
@@ -214,20 +203,24 @@ end
 local function add_clients(t, clients, focus)
     if #clients == 0 then return end
 
-    local node = trees[t].root and (trees[t].root:find_if(match(focus))
-            or trees[t].root:find_if(match(trees[t].last_focus)))
+    local node = trees[t].root and trees[t].root:find_if(match(focus))
 
     for _, c in pairs(clients) do
         if node then
-            local next_split
-            if node.parent then
-                if node.parent.data.split == "horizontal" then
-                    next_split = "vertical"
-                else
-                    next_split = "horizontal"
-                end
+            node.data.ratio = treetile.new_ratio
+            node.data.split = force_split
+                    or (node.parent and rotate(node.parent.data.split))
+                    or treetile.new_split
+            if node.data.split == "vertical" and treetile.new_vertical == "left"
+                    or node.data.split == "horizontal" and treetile.new_vertical == "top" then
+                node:set_new_right { id = node.data.id }
+                node.data.id = nil
+                node = node:set_new_left { id = c }
+            else
+                node:set_new_left { id = node.data.id }
+                node.data.id = nil
+                node = node:set_new_right { id = c }
             end
-            node = node:add_client(c, force_split or next_split)
         else
             assert(not trees[t].root)
             trees[t].root = bintree.new { id = c }
@@ -246,55 +239,27 @@ end
 local function prune_clients(t, clients)
     if not trees[t].root then return end
 
-    for _, c in ipairs(clients) do
+    for _, c in pairs(clients) do
         local node = trees[t].root:find_if(match(c))
-        if node and node.parent then
+        assert(node)
+        if node.parent then
+            local parent = node.parent
+            local sibling = node:get_sibling()
 
-            local grand_parent = node.parent.parent
+            parent.data, sibling.data = sibling.data, parent.data
+            parent:set_left(sibling.left)
+            parent:set_right(sibling.right)
 
-            if grand_parent then
-                print(" @@@@@ GRANDPA")
+            node:remove(cleanup)
+            sibling:remove(cleanup)
 
-                local sibling = node:get_sibling()
-                if grand_parent.left == node.parent then
-                    node.parent:remove(cleanup)
-                    grand_parent:set_left(sibling)
-                elseif grand_parent.right == node.parent then
-                    node.parent:remove(cleanup)
-                    grand_parent:set_right(sibling)
-                else
-                    assert(false)
-                end
-                node:remove(cleanup)
-
-                if treetile.rotate_on_remove then
-                    grand_parent:rotate_all()
-                end
-
-                trees[t].last_focus = sibling.data.id
-            else
-                print(" @@@@@ NO GRANDPA")
-
-                local old_root = trees[t].root
-                if trees[t].root.left == node then
-                    trees[t].root = trees[t].root.right
-                elseif trees[t].root.right == node then
-                    trees[t].root = trees[t].root.left
-                else
-                    assert(false)
-                end
-                node:remove(cleanup)
-                old_root:remove(cleanup)
-                trees[t].root.parent = nil
-
-                if treetile.rotate_on_remove then
-                    trees[t].root:rotate_all()
-                end
-
-                trees[t].last_focus = trees[t].root:get_rightmost().data.id
+            if treetile.rotate_on_remove then
+                trees[t].root:rotate_all()
             end
+
+            trees[t].last_focus = parent.data.id
+                    -- or parent:get_leftmost() or parent:get_rightmost()
         else
-            print(" @@@@@ ROOT")
             trees[t].root:remove(cleanup)
             trees[t].root = nil
             trees[t].last_focus = nil
@@ -305,6 +270,7 @@ end
 
 -- Update the geometries of all clients.
 local function update_clients(t, geometry)
+    if not trees[t].root then return end
     trees[t].root:apply_geometry({
         x      = geometry.x + t.gap,
         y      = geometry.y + t.gap,
@@ -313,65 +279,7 @@ local function update_clients(t, geometry)
     }, t.gap)
 end
 
-function treetile.arrange(p)
-    print()
-    local t = (p.tag
-            or capi.screen[p.screen].selected_tag
-            or awful.tag.selected(capi.mouse.screen))
-
-    -- Create a new root.
-    if not trees[t] then
-        trees[t] = {
-            root = nil,
-            last_focus = nil,
-            clients = { },
-        }
-    end
-
-    local added, moved, removed = full_diff(trees[t].clients, p.clients)
-    print(string.format("diff: +%d ~%d -%d", #added, #moved, #removed))
-
-    if #p.clients == #trees[t].clients and #moved == 2 then
-        local node1 = trees[t].root:find_if(match(moved[1]))
-        local node2 = trees[t].root:find_if(match(moved[2]))
-        node1.data.id, node2.data.id = node2.data.id, node1.data.id
-        force_update = true
-    end
-
-    if trees[t].root then
-        prune_clients(t, removed)
-    end
-
-    if #added > 0 then
-        -- TODO: find a better to handle this
-        local focus = treetile.new_focus
-                and awful.client.focus.history.get(p.screen, 1)
-                or capi.client.focus
-
-        if not focus or focus.floating then
-            focus = trees[t].last_focus
-        end
-
-        add_clients(t, added, focus)
-    end
-
-    -- if trees[t].root and (#added + #moved + #removed > 0 or force_update) then
-    --     update_clients(t, p.workarea)
-    -- end
-
-    update_clients(t, p.workarea)
-
-    if treetile.debug and trees[t].root and #added + #moved + #removed > 0 then
-        print("tree:", t.name)
-        trees[t].root:show_detailed()
-    end
-
-    force_update = nil
-    trees[t].clients = p.clients
-    trees[t].last_p = p
-end
-
-function treetile.resize(inc, split)
+local function resize(inc, split)
     -- inc: percentage of change: 0.01, 0.99 with +/-
     local c = capi.client.focus
     local t = (capi.screen[c.screen].selected_tag
@@ -386,20 +294,72 @@ function treetile.resize(inc, split)
 
     node.data.ratio = math.min(math.max(node.data.ratio + inc, 0.1), 0.9)
 
-    if treetile.debug and trees[t].root then
+    if treetile.debug then
         print("tree:", t.name)
         trees[t].root:show_detailed()
     end
 
-    update_clients(t, trees[t].last_p.workarea)
+    update_clients(t, trees[t].params.workarea)
 end
 
-function treetile.resize_horizontal(inc)
-    return treetile.resize(inc, "vertical")
-end
+function treetile.arrange(params)
+    local t = (params.tag
+            or capi.screen[params.screen].selected_tag
+            or awful.tag.selected(capi.mouse.screen))
 
-function treetile.resize_vertical(inc)
-    return treetile.resize(inc, "horizontal")
+    -- Create a new root.
+    if not trees[t] then
+        trees[t] = {
+            root = nil,
+            last_focus = nil,
+            params = {
+                clients = { },
+            },
+        }
+    end
+
+    -- Calculate diff.
+    local added, moved, removed = full_diff(trees[t].params.clients, params.clients)
+    if treetile.debug then
+        print(string.format("\ndiff: +%d ~%d -%d", #added, #moved, #removed))
+    end
+
+    -- Swap two (!) clients.
+    if #moved == 2 and #params.clients == #trees[t].params.clients then
+        local node1 = trees[t].root:find_if(match(moved[1]))
+        local node2 = trees[t].root:find_if(match(moved[2]))
+        node1.data.id, node2.data.id = node2.data.id, node1.data.id
+    end
+
+    -- Prune clients from the tree that are not tagged anymore.
+    if #removed > 0 and trees[t].root then
+        prune_clients(t, removed)
+    end
+
+    -- Add clients that are not in the tree yet.
+    if #added > 0 then
+        -- TODO: find a better to handle this
+        local focus = treetile.new_focus
+                and awful.client.focus.history.get(params.screen, 1)
+                or capi.client.focus
+
+        if not focus or focus.floating then
+            focus = trees[t].last_focus
+        end
+
+        add_clients(t, added, focus)
+    end
+
+    -- Update all client geometries.
+    update_clients(t, params.workarea)
+
+    if treetile.debug and trees[t].root and #added + #moved + #removed > 0 then
+        print("tree:", t.name)
+        trees[t].root:show_detailed()
+    end
+
+    -- Store params.
+    trees[t].params = params
 end
 
 -- function treetile.mouse_resize_handler(c, corner, x, y)
@@ -460,9 +420,9 @@ end
 --
 --     capi.mouse.coords(corner_coords)
 --
---     local prev_coords = {}
+--     local prev_coords = { }
 --     capi.mousegrabber.run(function(m)
---         for _, v in ipairs(m.buttons) do
+--         for _, v in pairs(m.buttons) do
 --             if v then
 --                 prev_coords = { x = m.x, y = m.y }
 --                 local fact_x = (m.x - corner_coords.x)
@@ -525,7 +485,7 @@ end
 --                     sib_node:update_nodes_geo(new_sib, trees[t].geo)
 --                 end
 --
---                 for _, cl in ipairs(trees[t].clients) do
+--                 for _, cl in pairs(trees[t].clients) do
 --                     local geo = trees[t].geo[hash(cl)]
 --                     if type(geo) == 'table' then
 --                         cl:geometry(geo)
@@ -549,14 +509,22 @@ end
 
 -- {{{ public functions
 
+function treetile.resize_horizontal(inc)
+    return resize(inc, "vertical")
+end
+
+function treetile.resize_vertical(inc)
+    return resize(inc, "horizontal")
+end
+
 function treetile.horizontal()
     force_split = "horizontal"
-    debug_info('Next split is horizontal.')
+    if treetile.debug then debug_info('Next split is horizontal.') end
 end
 
 function treetile.vertical()
     force_split = "vertical"
-    debug_info('Next split is vertical.')
+    if treetile.debug then debug_info('Next split is vertical.') end
 end
 
 function treetile.rotate(c)
@@ -565,7 +533,7 @@ function treetile.rotate(c)
     local node = c and trees[t].root:find_if(match(c)).parent
     if node then
         node:rotate()
-        update_clients(t, trees[t].last_p.workarea)
+        update_clients(t, trees[t].params.workarea)
     end
 end
 
@@ -575,7 +543,7 @@ function treetile.rotate_all(c)
     local node = c and trees[t].root:find_if(match(c)).parent
     if node then
         node:rotate_all()
-        update_clients(t, trees[t].last_p.workarea)
+        update_clients(t, trees[t].params.workarea)
     end
 end
 
@@ -585,7 +553,7 @@ function treetile.swap(c)
     local node = c and trees[t].root:find_if(match(c)).parent
     if node then
         node:swap_children()
-        update_clients(t, trees[t].last_p.workarea)
+        update_clients(t, trees[t].params.workarea)
     end
 end
 
@@ -597,7 +565,7 @@ function treetile.swap_all(c)
         node:apply(function(n)
             if not n.parent or n.parent.right == n then n:swap_children() end
         end)
-        update_clients(t, trees[t].last_p.workarea)
+        update_clients(t, trees[t].params.workarea)
     end
 end
 
