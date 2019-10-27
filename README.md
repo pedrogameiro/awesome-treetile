@@ -23,7 +23,7 @@ Installation
 1. Clone repository to your awesome directory
 
     ```
-    git clone http://github.com/guotsuan/treetile.git ~/.config/awesome/treetile
+    git clone http://github.com/ItsJimi/treetile.git ~/.config/awesome/treetile
     ```
 
 2. Add this line to your rc.lua below other require calls.
