@@ -68,7 +68,6 @@ local treetile = {
 }
 
 -- globals
-local force_split = nil
 local trees       = { }
 
 -- TODO
@@ -208,9 +207,7 @@ local function add_clients(t, clients, focus)
     for _, c in pairs(clients) do
         if node then
             node.data.ratio = treetile.new_ratio
-            node.data.split = force_split
-                    or (node.parent and rotate(node.parent.data.split))
-                    or treetile.new_split
+            node.data.split = treetile.new_split
             if node.data.split == "vertical" and treetile.new_vertical == "left"
                     or node.data.split == "horizontal" and treetile.new_vertical == "top" then
                 node:set_new_right { id = node.data.id }
@@ -232,7 +229,6 @@ local function add_clients(t, clients, focus)
     if focus and not focus.floating then
         trees[t].last_focus = focus
     end
-    force_split = nil
 end
 
 -- Some client removed. Update the trees.
@@ -518,13 +514,13 @@ function treetile.resize_vertical(inc)
 end
 
 function treetile.horizontal()
-    force_split = "horizontal"
-    if treetile.debug then debug_info('Next split is horizontal.') end
+  treetile.new_split = "horizontal"
+  if treetile.debug then debug_info('Next split is horizontal.') end
 end
 
 function treetile.vertical()
-    force_split = "vertical"
-    if treetile.debug then debug_info('Next split is vertical.') end
+  treetile.new_split = "vertical"
+  if treetile.debug then debug_info('Next split is vertical.') end
 end
 
 function treetile.rotate(c)
