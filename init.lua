@@ -301,7 +301,7 @@ local function update_clients(t, geometry)
     )
 end
 
-local function resize(inc, split)
+local function resize_local(inc, split)
     -- inc: percentage of change: 0.01, 0.99 with +/-
     local c = capi.client.focus
     local t = (capi.screen[c.screen].selected_tag or awful.tag.selected(capi.mouse.screen))
@@ -530,12 +530,16 @@ end
 
 -- {{{ public functions
 
+function treetile.resize(inc)
+    return resize_local(inc, treetile.new_split)
+end
+
 function treetile.resize_horizontal(inc)
-    return resize(inc, "vertical")
+    return resize_local(inc, "vertical")
 end
 
 function treetile.resize_vertical(inc)
-    return resize(inc, "horizontal")
+    return resize_local(inc, "horizontal")
 end
 
 function treetile.horizontal()
