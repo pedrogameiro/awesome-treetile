@@ -1,4 +1,3 @@
-
 --[[
 
      Licensed under GNU General Public License v2
@@ -31,44 +30,43 @@
     Otherwise, set "treetile.new_focus = false"
 
 --]]
+local awful = require("awful")
+local beautiful = require("beautiful")
+local gdebug = require("gears.debug")
+local gtable = require("gears.table")
+local naughty = require("naughty")
 
-local awful        = require("awful")
-local beautiful    = require("beautiful")
-local gdebug       = require("gears.debug")
-local gtable       = require("gears.table")
-local naughty      = require("naughty")
-
-local bintree      = require("treetile.bintree")
-local os           = os
-local math         = math
-local ipairs       = ipairs
-local pairs        = pairs
-local table        = table
-local tonumber     = tonumber
-local tostring     = tostring
-local type         = type
+local bintree = require("treetile.bintree")
+local os = os
+local math = math
+local ipairs = ipairs
+local pairs = pairs
+local table = table
+local tonumber = tonumber
+local tostring = tostring
+local type = type
 
 local capi = {
-    client       = client,
-    tag          = tag,
-    mouse        = mouse,
-    screen       = screen,
-    mousegrabber = mousegrabber,
+    client = client,
+    tag = tag,
+    mouse = mouse,
+    screen = screen,
+    mousegrabber = mousegrabber
 }
 
 local treetile = {
-    name             = "treetile",
-    new_focus        = true,
-    new_ratio        = 0.5,
-    new_split        = "vertical",
-    new_vertical     = "right",
-    new_horizontal   = "bottom",
+    name = "treetile",
+    new_focus = true,
+    new_ratio = 0.5,
+    new_split = "vertical",
+    new_vertical = "right",
+    new_horizontal = "bottom",
     rotate_on_remove = false,
-    debug            = false,
+    debug = false
 }
 
 -- globals
-local trees       = { }
+local trees = {}
 
 -- TODO
 -- layout icon
@@ -78,19 +76,19 @@ beautiful.layout_treetile = os.getenv("HOME") .. "/.config/awesome/treetile/layo
 
 local function debug_info(message)
     if type(message) == "table" then
-        local text = { }
+        local text = {}
         for k, v in pairs(message) do
-            table.insert(text, { "key: ", k, " value: ", tostring(v), "\n" })
+            table.insert(text, {"key: ", k, " value: ", tostring(v), "\n"})
         end
-        naughty.notify { text = table.concat(text) }
+        naughty.notify {text = table.concat(text)}
     else
-        naughty.notify { text = tostring(message) }
+        naughty.notify {text = tostring(message)}
     end
 end
 
 -- Diff clients. Ugly but optimized.
 local function full_diff(old, new)
-    local added, moved, removed = { }, { }, { }
+    local added, moved, removed = {}, {}, {}
     for i = 1, #old do
         local new_index = gtable.hasitem(new, old[i])
         if new[i] ~= old[i] and new_index then
@@ -117,10 +115,10 @@ local function calculate_geometry(geometry, split, ratio)
         geometry.height = height * ratio
     end
     return geometry, {
-        x      = vertical and geometry.x + width * ratio or geometry.x,
-        y      = not vertical and geometry.y + height * ratio or geometry.y,
-        width  = vertical and width * (1 - ratio) or width,
-        height = not vertical and height * (1 - ratio) or height,
+        x = vertical and geometry.x + width * ratio or geometry.x,
+        y = not vertical and geometry.y + height * ratio or geometry.y,
+        width = vertical and width * (1 - ratio) or width,
+        height = not vertical and height * (1 - ratio) or height
     }
 end
 
@@ -143,8 +141,7 @@ end
 -- {{{ bintree enhancement
 
 function bintree:apply_geometry(geometry, gaps)
-    assert((self.left and self.right and not self.data.id)
-            or (not self.left and not self.right and self.data.id))
+    assert((self.left and self.right and not self.data.id) or (not self.left and not self.right and self.data.id))
 
     if self.left and self.right then
         local g1, g2 = calculate_geometry(geometry, self.data.split, self.data.ratio)
@@ -153,45 +150,66 @@ function bintree:apply_geometry(geometry, gaps)
         return
     else
         local c = self.data.id
-        geometry.width  = geometry.width  - 2 * gaps - 2 * c.border_width
+        geometry.width = geometry.width - 2 * gaps - 2 * c.border_width
         geometry.height = geometry.height - 2 * gaps - 2 * c.border_width
         c:geometry(geometry)
     end
 end
 
 function bintree:rotate()
-    if not self.data.split then return end
+    if not self.data.split then
+        return
+    end
     self.data.split = self.data.split == "vertical" and "horizontal" or "vertical"
 end
 
 function bintree:rotate_all()
-    if not self.data.split then return end
+    if not self.data.split then
+        return
+    end
     self:apply(bintree.rotate)
 end
 
 function bintree:show_detailed()
-    self:apply_levels(function(node, level)
-        if node.data.id then
-            print(table.concat {
-                string.rep(" ", 4 * level),
-                node.parent and (node.parent.left == node and "┌" or "└") or " ",
-                " ● [",
-                "x:", tostring(node.data.id.x),      " ",
-                "y:", tostring(node.data.id.y),      " ",
-                "w:", tostring(node.data.id.width),  " ",
-                "h:", tostring(node.data.id.height), "] [",
-                tostring(node.data.id),              "]",
-            })
-        else
-            print(table.concat {
-                string.rep(" ", 4 * level),
-                node.parent and (node.parent.left == node and "┌" or "└") or " ",
-                " ● [",
-                tostring(node.data.ratio), "] [",
-                tostring(node.data.split), "]",
-            })
+    self:apply_levels(
+        function(node, level)
+            if node.data.id then
+                print(
+                    table.concat {
+                        string.rep(" ", 4 * level),
+                        node.parent and (node.parent.left == node and "┌" or "└") or " ",
+                        " ● [",
+                        "x:",
+                        tostring(node.data.id.x),
+                        " ",
+                        "y:",
+                        tostring(node.data.id.y),
+                        " ",
+                        "w:",
+                        tostring(node.data.id.width),
+                        " ",
+                        "h:",
+                        tostring(node.data.id.height),
+                        "] [",
+                        tostring(node.data.id),
+                        "]"
+                    }
+                )
+            else
+                print(
+                    table.concat {
+                        string.rep(" ", 4 * level),
+                        node.parent and (node.parent.left == node and "┌" or "└") or " ",
+                        " ● [",
+                        tostring(node.data.ratio),
+                        "] [",
+                        tostring(node.data.split),
+                        "]"
+                    }
+                )
+            end
         end
-    end)
+    )
 end
 
 -- }}}
@@ -200,7 +218,9 @@ end
 
 -- One or more clients are added. Put them in the tree.
 local function add_clients(t, clients, focus)
-    if #clients == 0 then return end
+    if #clients == 0 then
+        return
+    end
 
     local node = trees[t].root and trees[t].root:find_if(match(focus))
 
@@ -208,19 +228,18 @@ local function add_clients(t, clients, focus)
         if node then
             node.data.ratio = treetile.new_ratio
             node.data.split = treetile.new_split
-            if node.data.split == "vertical" and treetile.new_vertical == "left"
-                    or node.data.split == "horizontal" and treetile.new_vertical == "top" then
-                node:set_new_right { id = node.data.id }
+            if node.data.split == "vertical" and treetile.new_vertical == "left" or node.data.split == "horizontal" and treetile.new_vertical == "top" then
+                node:set_new_right {id = node.data.id}
                 node.data.id = nil
-                node = node:set_new_left { id = c }
+                node = node:set_new_left {id = c}
             else
-                node:set_new_left { id = node.data.id }
+                node:set_new_left {id = node.data.id}
                 node.data.id = nil
-                node = node:set_new_right { id = c }
+                node = node:set_new_right {id = c}
             end
         else
             assert(not trees[t].root)
-            trees[t].root = bintree.new { id = c }
+            trees[t].root = bintree.new {id = c}
             node = trees[t].root
         end
         focus = c
@@ -233,12 +252,15 @@ end
 
 -- Some client removed. Update the trees.
 local function prune_clients(t, clients)
-    if not trees[t].root then return end
+    if not trees[t].root then
+        return
+    end
 
     for _, c in pairs(clients) do
         local node = trees[t].root:find_if(match(c))
         assert(node)
         if node.parent then
+            -- or parent:get_leftmost() or parent:get_rightmost()
             local parent = node.parent
             local sibling = node:get_sibling()
 
@@ -254,7 +276,6 @@ local function prune_clients(t, clients)
             end
 
             trees[t].last_focus = parent.data.id
-                    -- or parent:get_leftmost() or parent:get_rightmost()
         else
             trees[t].root:remove(cleanup)
             trees[t].root = nil
@@ -266,27 +287,35 @@ end
 
 -- Update the geometries of all clients.
 local function update_clients(t, geometry)
-    if not trees[t].root then return end
-    trees[t].root:apply_geometry({
-        x      = geometry.x + t.gap,
-        y      = geometry.y + t.gap,
-        width  = geometry.width,
-        height = geometry.height,
-    }, t.gap)
+    if not trees[t].root then
+        return
+    end
+    trees[t].root:apply_geometry(
+        {
+            x = geometry.x + t.gap,
+            y = geometry.y + t.gap,
+            width = geometry.width,
+            height = geometry.height
+        },
+        t.gap
+    )
 end
 
 local function resize(inc, split)
     -- inc: percentage of change: 0.01, 0.99 with +/-
     local c = capi.client.focus
-    local t = (capi.screen[c.screen].selected_tag
-            or awful.tag.selected(capi.mouse.screen))
-    if not trees[t].root then return end
+    local t = (capi.screen[c.screen].selected_tag or awful.tag.selected(capi.mouse.screen))
+    if not trees[t].root then
+        return
+    end
 
     local node = trees[t].root:find_if(match(c)).parent
     while node and node.data.split ~= split do
         node = node.parent
     end
-    if not node then return end
+    if not node then
+        return
+    end
 
     node.data.ratio = math.min(math.max(node.data.ratio + inc, 0.1), 0.9)
 
@@ -299,9 +328,7 @@ local function resize(inc, split)
 end
 
 function treetile.arrange(params)
-    local t = (params.tag
-            or capi.screen[params.screen].selected_tag
-            or awful.tag.selected(capi.mouse.screen))
+    local t = (params.tag or capi.screen[params.screen].selected_tag or awful.tag.selected(capi.mouse.screen))
 
     -- Create a new root.
     if not trees[t] then
@@ -309,8 +336,8 @@ function treetile.arrange(params)
             root = nil,
             last_focus = nil,
             params = {
-                clients = { },
-            },
+                clients = {}
+            }
         }
     end
 
@@ -335,9 +362,7 @@ function treetile.arrange(params)
     -- Add clients that are not in the tree yet.
     if #added > 0 then
         -- TODO: find a better to handle this
-        local focus = treetile.new_focus
-                and awful.client.focus.history.get(params.screen, 1)
-                or capi.client.focus
+        local focus = treetile.new_focus and awful.client.focus.history.get(params.screen, 1) or capi.client.focus
 
         if not focus or focus.floating then
             focus = trees[t].last_focus
@@ -514,18 +539,21 @@ function treetile.resize_vertical(inc)
 end
 
 function treetile.horizontal()
-  treetile.new_split = "horizontal"
-  if treetile.debug then debug_info('Next split is horizontal.') end
+    treetile.new_split = "horizontal"
+    if treetile.debug then
+        debug_info("Next split is horizontal.")
+    end
 end
 
 function treetile.vertical()
-  treetile.new_split = "vertical"
-  if treetile.debug then debug_info('Next split is vertical.') end
+    treetile.new_split = "vertical"
+    if treetile.debug then
+        debug_info("Next split is vertical.")
+    end
 end
 
 function treetile.rotate(c)
-    local t = c and c.screen.selected_tag
-            or awful.screen.focused().selected_tag
+    local t = c and c.screen.selected_tag or awful.screen.focused().selected_tag
     local node = c and trees[t].root:find_if(match(c)).parent
     if node then
         node:rotate()
@@ -534,8 +562,7 @@ function treetile.rotate(c)
 end
 
 function treetile.rotate_all(c)
-    local t = c and c.screen.selected_tag
-            or awful.screen.focused().selected_tag
+    local t = c and c.screen.selected_tag or awful.screen.focused().selected_tag
     local node = c and trees[t].root:find_if(match(c)).parent
     if node then
         node:rotate_all()
@@ -544,8 +571,7 @@ function treetile.rotate_all(c)
 end
 
 function treetile.swap(c)
-    local t = c and c.screen.selected_tag
-            or awful.screen.focused().selected_tag
+    local t = c and c.screen.selected_tag or awful.screen.focused().selected_tag
     local node = c and trees[t].root:find_if(match(c)).parent
     if node then
         node:swap_children()
@@ -554,13 +580,16 @@ function treetile.swap(c)
 end
 
 function treetile.swap_all(c)
-    local t = c and c.screen.selected_tag
-            or awful.screen.focused().selected_tag
+    local t = c and c.screen.selected_tag or awful.screen.focused().selected_tag
     local node = c and trees[t].root:find_if(match(c)).parent
     if node then
-        node:apply(function(n)
-            if not n.parent or n.parent.right == n then n:swap_children() end
-        end)
+        node:apply(
+            function(n)
+                if not n.parent or n.parent.right == n then
+                    n:swap_children()
+                end
+            end
+        )
         update_clients(t, trees[t].params.workarea)
     end
 end
