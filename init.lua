@@ -227,7 +227,13 @@ local function add_clients(t, clients, focus)
     for _, c in pairs(clients) do
         if node then
             node.data.ratio = treetile.new_ratio
-            node.data.split = treetile.new_split
+            if treetile.new_split ~= "auto" then
+                node.data.split = treetile.new_split
+            elseif focus.width > focus.height then
+                node.data.split = "vertical"
+            elseif focus.width < focus.height then
+                node.data.split = "horizontal"
+            end
             if node.data.split == "vertical" and treetile.new_vertical == "left" or node.data.split == "horizontal" and treetile.new_vertical == "top" then
                 node:set_new_right {id = node.data.id}
                 node.data.id = nil
