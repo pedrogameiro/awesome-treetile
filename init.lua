@@ -107,8 +107,17 @@ end
 
 -- Split geometry into two geometries.
 local function calculate_geometry(geometry, split, ratio)
-    local vertical = split == "vertical"
     local width, height = geometry.width, geometry.height
+
+    if split == "auto" then
+        if geometry.width < geometry.height then
+            split = "horizontal"
+        elseif geometry.width > geometry.height then
+            split = "vertical"
+        end
+    end
+    
+    local vertical = split == "vertical"
     if vertical then
         geometry.width = width * ratio
     else
@@ -227,13 +236,7 @@ local function add_clients(t, clients, focus)
     for _, c in pairs(clients) do
         if node then
             node.data.ratio = treetile.new_ratio
-            if treetile.new_split ~= "auto" then
-                node.data.split = treetile.new_split
-            elseif focus.width > focus.height then
-                node.data.split = "vertical"
-            elseif focus.width < focus.height then
-                node.data.split = "horizontal"
-            end
+            node.data.split = treetile.new_split
             if node.data.split == "vertical" and treetile.new_vertical == "left" or node.data.split == "horizontal" and treetile.new_vertical == "top" then
                 node:set_new_right {id = node.data.id}
                 node.data.id = nil
