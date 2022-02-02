@@ -107,8 +107,17 @@ end
 
 -- Split geometry into two geometries.
 local function calculate_geometry(geometry, split, ratio)
-    local vertical = split == "vertical"
     local width, height = geometry.width, geometry.height
+
+    if split == "auto" then
+        if geometry.width < geometry.height then
+            split = "horizontal"
+        elseif geometry.width > geometry.height then
+            split = "vertical"
+        end
+    end
+    
+    local vertical = split == "vertical"
     if vertical then
         geometry.width = width * ratio
     else
